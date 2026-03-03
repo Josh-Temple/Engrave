@@ -1,0 +1,5 @@
+{
+  "name": "Engrave",
+  "description": "A progressive cloze memorization app for texts, laws, and formulas. Features bidirectional learning and LaTeX support.",
+  "requestFramePermissions": []
+}
