@@ -2,7 +2,7 @@
 
 ## このリポジトリの現状
 - Vercel デプロイ準備済み（`vercel.json` 設定あり）
-- UI・デザインのコード自体は変更していません
+- Settings 画面にバックアップ/リストア UI を追加済み
 
 ## デプロイ手順（Vercel）
 1. Vercel にリポジトリを import
@@ -38,3 +38,14 @@ Vercel 側設定（`vercel.json`）:
 - `npm run lint` passed.
 - `npm run build` passed.
 - Captured UI screenshots for Home (settings icon) and Settings (audio toggle).
+
+
+## Latest Session Updates (Persistence Hardening)
+- Added a stable persisted-state configuration with explicit schema versioning and migration/normalization safeguards.
+- Added JSON backup export from Settings.
+- Added JSON backup restore in Settings.
+- This reduces future data-loss risk during app updates, especially when the stored shape evolves.
+
+## Verification Done (Latest Session)
+- `npm run lint` passed.
+- `npm run build` passed.

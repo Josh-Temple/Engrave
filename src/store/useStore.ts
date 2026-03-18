@@ -17,26 +17,126 @@ export interface MemoryItem {
   audioDataUrl?: string;
 }
 
+export interface AppSettings {
+  autoPlayAudioOnBack: boolean;
+}
+
+export interface BackupPayload {
+  exportedAt: string;
+  schemaVersion: number;
+  app: {
+    items: MemoryItem[];
+    settings: AppSettings;
+  };
+}
+
 interface AppState {
   items: MemoryItem[];
-  settings: {
-    autoPlayAudioOnBack: boolean;
-  };
+  settings: AppSettings;
   addItem: (source: string, segments: Segment[], audioDataUrl?: string) => void;
   deleteItem: (id: string) => void;
   updateItem: (id: string, updates: Partial<MemoryItem>) => void;
   reviewItem: (id: string, passed: boolean) => void;
   getDueItems: () => MemoryItem[];
-  updateSettings: (updates: Partial<AppState['settings']>) => void;
+  updateSettings: (updates: Partial<AppSettings>) => void;
+  exportBackup: () => BackupPayload;
+  importBackup: (payload: BackupPayload) => void;
 }
+
+const STORAGE_KEY = 'zencards-storage-v4';
+const STORAGE_VERSION = 1;
+
+const defaultSettings = (): AppSettings => ({
+  autoPlayAudioOnBack: false,
+});
+
+const normalizeSegment = (segment: unknown): Segment | null => {
+  if (!Array.isArray(segment) || typeof segment[0] !== 'string') return null;
+  if (segment.length > 1 && typeof segment[1] !== 'string') return null;
+  return [segment[0], typeof segment[1] === 'string' ? segment[1] : undefined];
+};
+
+const normalizeItem = (item: unknown): MemoryItem | null => {
+  if (!item || typeof item !== 'object') return null;
+
+  const candidate = item as Record<string, unknown>;
+  if (typeof candidate.id !== 'string') return null;
+  if (typeof candidate.source !== 'string') return null;
+  if (!Array.isArray(candidate.segments)) return null;
+
+  const segments = candidate.segments
+    .map((segment) => normalizeSegment(segment))
+    .filter((segment): segment is Segment => segment !== null);
+
+  if (segments.length !== candidate.segments.length) return null;
+
+  return {
+    id: candidate.id,
+    source: candidate.source,
+    segments,
+    level: typeof candidate.level === 'number' ? candidate.level : 0,
+    nextReviewDate: typeof candidate.nextReviewDate === 'number' ? candidate.nextReviewDate : Date.now(),
+    interval: typeof candidate.interval === 'number' ? candidate.interval : 0,
+    easeFactor: typeof candidate.easeFactor === 'number' ? candidate.easeFactor : 2.5,
+    repetitions: typeof candidate.repetitions === 'number' ? candidate.repetitions : 0,
+    createdAt: typeof candidate.createdAt === 'number' ? candidate.createdAt : Date.now(),
+    audioDataUrl: typeof candidate.audioDataUrl === 'string' ? candidate.audioDataUrl : undefined,
+  };
+};
+
+const normalizeSettings = (settings: unknown): AppSettings => {
+  if (!settings || typeof settings !== 'object') {
+    return defaultSettings();
+  }
+
+  const candidate = settings as Record<string, unknown>;
+  return {
+    autoPlayAudioOnBack:
+      typeof candidate.autoPlayAudioOnBack === 'boolean'
+        ? candidate.autoPlayAudioOnBack
+        : defaultSettings().autoPlayAudioOnBack,
+  };
+};
+
+const normalizeBackupPayload = (payload: unknown): BackupPayload => {
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('Backup file is invalid.');
+  }
+
+  const candidate = payload as Record<string, unknown>;
+  const app = candidate.app;
+  if (!app || typeof app !== 'object') {
+    throw new Error('Backup file is missing app data.');
+  }
+
+  const appRecord = app as Record<string, unknown>;
+  const rawItems = Array.isArray(appRecord.items) ? appRecord.items : [];
+  const items = rawItems.map((item) => normalizeItem(item)).filter((item): item is MemoryItem => item !== null);
+
+  if (items.length !== rawItems.length) {
+    throw new Error('Backup file contains invalid items.');
+  }
+
+  const schemaVersion =
+    typeof candidate.schemaVersion === 'number' && Number.isFinite(candidate.schemaVersion)
+      ? candidate.schemaVersion
+      : STORAGE_VERSION;
+
+  return {
+    exportedAt: typeof candidate.exportedAt === 'string' ? candidate.exportedAt : new Date().toISOString(),
+    schemaVersion,
+    app: {
+      items,
+      settings: normalizeSettings(appRecord.settings),
+    },
+  };
+};
 
 export const useStore = create<AppState>()(
   persist(
     (set, get) => ({
       items: [],
-      settings: {
-        autoPlayAudioOnBack: false,
-      },
+      settings: defaultSettings(),
 
       addItem: (source, segments, audioDataUrl) => {
         const newItem: MemoryItem = {
@@ -82,14 +182,14 @@ export const useStore = create<AppState>()(
               if (repetitions === 1) interval = 1;
               else if (repetitions === 2) interval = 6;
               else interval = Math.round(interval * easeFactor);
-              
+
               // Increase difficulty level (max 5)
               level = Math.min(5, level + 1);
             } else {
               repetitions = 0;
               interval = 1;
               easeFactor = Math.max(1.3, easeFactor - 0.2);
-              
+
               // Decrease difficulty level to relearn (min 0)
               level = Math.max(0, level - 1);
             }
@@ -107,7 +207,39 @@ export const useStore = create<AppState>()(
         const today = startOfDay(new Date()).getTime();
         return items.filter((i) => isBefore(i.nextReviewDate, addDays(today, 1)));
       },
+
+      exportBackup: () => ({
+        exportedAt: new Date().toISOString(),
+        schemaVersion: STORAGE_VERSION,
+        app: {
+          items: get().items,
+          settings: get().settings,
+        },
+      }),
+
+      importBackup: (payload) => {
+        const normalized = normalizeBackupPayload(payload);
+        set({
+          items: normalized.app.items,
+          settings: normalized.app.settings,
+        });
+      },
     }),
-    { name: 'zencards-storage-v4' } // new storage key to avoid conflicts
+    {
+      name: STORAGE_KEY,
+      version: STORAGE_VERSION,
+      partialize: (state) => ({
+        items: state.items,
+        settings: state.settings,
+      }),
+      migrate: (persistedState) => {
+        const candidate = persistedState as Record<string, unknown> | undefined;
+        const rawItems = Array.isArray(candidate?.items) ? candidate.items : [];
+        return {
+          items: rawItems.map((item) => normalizeItem(item)).filter((item): item is MemoryItem => item !== null),
+          settings: normalizeSettings(candidate?.settings),
+        };
+      },
+    }
   )
 );
