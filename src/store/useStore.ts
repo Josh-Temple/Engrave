@@ -14,23 +14,31 @@ export interface MemoryItem {
   easeFactor: number;
   repetitions: number;
   createdAt: number;
+  audioDataUrl?: string;
 }
 
 interface AppState {
   items: MemoryItem[];
-  addItem: (source: string, segments: Segment[]) => void;
+  settings: {
+    autoPlayAudioOnBack: boolean;
+  };
+  addItem: (source: string, segments: Segment[], audioDataUrl?: string) => void;
   deleteItem: (id: string) => void;
   updateItem: (id: string, updates: Partial<MemoryItem>) => void;
   reviewItem: (id: string, passed: boolean) => void;
   getDueItems: () => MemoryItem[];
+  updateSettings: (updates: Partial<AppState['settings']>) => void;
 }
 
 export const useStore = create<AppState>()(
   persist(
     (set, get) => ({
       items: [],
+      settings: {
+        autoPlayAudioOnBack: false,
+      },
 
-      addItem: (source, segments) => {
+      addItem: (source, segments, audioDataUrl) => {
         const newItem: MemoryItem = {
           id: crypto.randomUUID(),
           source,
@@ -41,8 +49,13 @@ export const useStore = create<AppState>()(
           easeFactor: 2.5,
           repetitions: 0,
           createdAt: Date.now(),
+          audioDataUrl,
         };
         set((state) => ({ items: [newItem, ...state.items] }));
+      },
+
+      updateSettings: (updates) => {
+        set((state) => ({ settings: { ...state.settings, ...updates } }));
       },
 
       deleteItem: (id) => {
@@ -95,6 +108,6 @@ export const useStore = create<AppState>()(
         return items.filter((i) => isBefore(i.nextReviewDate, addDays(today, 1)));
       },
     }),
-    { name: 'zencards-storage-v3' } // new storage key to avoid conflicts
+    { name: 'zencards-storage-v4' } // new storage key to avoid conflicts
   )
 );

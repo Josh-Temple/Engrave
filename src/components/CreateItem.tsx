@@ -1,4 +1,5 @@
 import { useState } from 'react';
+
 import { ArrowLeft, Sparkles, Copy, Check } from 'lucide-react';
 import { View } from '../App';
 import { useStore, Segment } from '../store/useStore';
@@ -37,6 +38,8 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
   const [error, setError] = useState('');
   const [copiedTemplate, setCopiedTemplate] = useState(false);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
+  const [audioDataUrl, setAudioDataUrl] = useState<string>('');
+  const [audioFileName, setAudioFileName] = useState('');
   const addItem = useStore((s) => s.addItem);
 
   const handleSave = () => {
@@ -59,11 +62,31 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
         }
       }
 
-      addItem(parsed.source, parsed.segments as Segment[]);
+      addItem(parsed.source, parsed.segments as Segment[], audioDataUrl || undefined);
       onNavigate('home');
     } catch (e: any) {
       setError(e.message || 'Invalid JSON format');
     }
+  };
+
+
+
+  const handleAudioUpload = (file?: File) => {
+    if (!file) return;
+
+    if (file.type !== 'audio/mpeg' && file.type !== 'audio/mp3') {
+      setError('Only MP3 files are supported.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setAudioDataUrl(String(reader.result));
+      setAudioFileName(file.name);
+      setError('');
+    };
+    reader.onerror = () => setError('Failed to read the audio file.');
+    reader.readAsDataURL(file);
   };
 
   const copyToClipboard = async (text: string, type: 'template' | 'prompt') => {
@@ -119,6 +142,26 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
             {error}
           </div>
         )}
+
+
+
+        <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 space-y-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Audio (MP3)</p>
+            <input
+              type="file"
+              accept="audio/mpeg,audio/mp3,.mp3"
+              onChange={(e) => handleAudioUpload(e.target.files?.[0])}
+              className="block w-full text-sm text-gray-500 file:mr-3 file:px-3 file:py-2 file:rounded-xl file:border-0 file:bg-gray-900 file:text-white hover:file:bg-gray-800"
+            />
+          </div>
+          {audioFileName && <p className="text-sm text-gray-500 truncate">Selected: {audioFileName}</p>}
+          {audioDataUrl && (
+            <audio controls className="w-full">
+              <source src={audioDataUrl} type="audio/mpeg" />
+            </audio>
+          )}
+        </div>
 
         <textarea
           value={jsonInput}

@@ -3,8 +3,9 @@ import { Home } from './components/Home';
 import { CreateItem } from './components/CreateItem';
 import { Study } from './components/Study';
 import { EditItem } from './components/EditItem';
+import { Settings } from './components/Settings';
 
-export type View = 'home' | 'create' | 'study' | 'edit' | 'practice';
+export type View = 'home' | 'create' | 'study' | 'edit' | 'practice' | 'settings';
 
 export default function App() {
   const [view, setView] = useState<View>('home');
@@ -22,6 +23,7 @@ export default function App() {
       {view === 'study' && <Study onNavigate={navigate} />}
       {view === 'practice' && activeItemId && <Study onNavigate={navigate} practiceItemId={activeItemId} />}
       {view === 'edit' && activeItemId && <EditItem itemId={activeItemId} onNavigate={navigate} />}
+      {view === 'settings' && <Settings onNavigate={navigate} />}
     </div>
   );
 }

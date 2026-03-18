@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pencil, Trash2, BookOpen } from 'lucide-react';
+import { Pencil, Trash2, BookOpen, Volume2 } from 'lucide-react';
 import { MemoryItem } from '../store/useStore';
 import { cn } from '../lib/utils';
 
@@ -42,6 +42,11 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, isDue, onEdit, onDelet
       <div className="pr-16">
         <h2 className="text-lg font-medium text-gray-900 truncate">{item.source}</h2>
         <p className="text-sm text-gray-400 truncate mt-1">{previewText}</p>
+        {item.audioDataUrl && (
+          <span className="inline-flex items-center gap-1 mt-2 text-xs text-gray-400">
+            <Volume2 size={14} /> MP3
+          </span>
+        )}
       </div>
       
       <div className="flex items-center gap-2">

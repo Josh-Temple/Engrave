@@ -10,6 +10,8 @@ export function EditItem({ itemId, onNavigate }: { itemId: string; onNavigate: (
 
   const [jsonInput, setJsonInput] = useState('');
   const [error, setError] = useState('');
+  const [audioDataUrl, setAudioDataUrl] = useState<string>('');
+  const [audioFileName, setAudioFileName] = useState('');
 
   useEffect(() => {
     if (item) {
@@ -17,6 +19,8 @@ export function EditItem({ itemId, onNavigate }: { itemId: string; onNavigate: (
         source: item.source,
         segments: item.segments
       }, null, 2));
+      setAudioDataUrl(item.audioDataUrl || '');
+      setAudioFileName(item.audioDataUrl ? 'Current audio' : '');
     }
   }, [item]);
 
@@ -42,11 +46,36 @@ export function EditItem({ itemId, onNavigate }: { itemId: string; onNavigate: (
         }
       }
 
-      updateItem(itemId, { source: parsed.source, segments: parsed.segments as Segment[] });
+      updateItem(itemId, { source: parsed.source, segments: parsed.segments as Segment[], audioDataUrl: audioDataUrl || undefined });
       onNavigate('home');
     } catch (e: any) {
       setError(e.message || 'Invalid JSON format');
     }
+  };
+
+
+
+  const handleAudioUpload = (file?: File) => {
+    if (!file) return;
+
+    if (file.type !== 'audio/mpeg' && file.type !== 'audio/mp3') {
+      setError('Only MP3 files are supported.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setAudioDataUrl(String(reader.result));
+      setAudioFileName(file.name);
+      setError('');
+    };
+    reader.onerror = () => setError('Failed to read the audio file.');
+    reader.readAsDataURL(file);
+  };
+
+  const clearAudio = () => {
+    setAudioDataUrl('');
+    setAudioFileName('');
   };
 
   return (
@@ -67,6 +96,34 @@ export function EditItem({ itemId, onNavigate }: { itemId: string; onNavigate: (
             {error}
           </div>
         )}
+
+        <div className="bg-white border border-gray-100 rounded-2xl p-4 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Audio (MP3)</p>
+            {audioDataUrl && (
+              <button
+                type="button"
+                onClick={clearAudio}
+                className="text-xs font-medium text-red-500 hover:text-red-600"
+              >
+                Remove
+              </button>
+            )}
+          </div>
+          <input
+            type="file"
+            accept="audio/mpeg,audio/mp3,.mp3"
+            onChange={(e) => handleAudioUpload(e.target.files?.[0])}
+            className="block w-full text-sm text-gray-500 file:mr-3 file:px-3 file:py-2 file:rounded-xl file:border-0 file:bg-gray-900 file:text-white hover:file:bg-gray-800"
+          />
+          {audioFileName && <p className="text-sm text-gray-500 truncate">Selected: {audioFileName}</p>}
+          {audioDataUrl && (
+            <audio controls className="w-full">
+              <source src={audioDataUrl} type="audio/mpeg" />
+            </audio>
+          )}
+        </div>
+
         <textarea
           value={jsonInput}
           onChange={(e) => {
