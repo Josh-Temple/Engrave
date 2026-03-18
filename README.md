@@ -37,3 +37,14 @@ Vercel will use:
 
 - 引き継ぎ情報は `HANDOFF.md` を参照してください。
 - UI・デザイン変更時は `DESIGN_GUIDELINES.md` を必ず確認してください。
+
+
+## Audio per Card
+
+- You can now attach an **MP3** audio file to each card during creation/edit.
+- On the study card back side, a **Play Audio** button is shown when audio exists.
+- In **Settings**, you can choose between:
+  - Manual playback (default)
+  - Auto-play when the card back is shown
+
+> Note: Audio files are stored in local browser storage as Data URLs. Very large files may exceed storage limits.

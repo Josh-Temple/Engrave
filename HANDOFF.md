@@ -25,3 +25,16 @@ Vercel 側設定（`vercel.json`）:
 ## ローカル確認
 - 型チェック: `npm run lint`
 - 本番ビルド確認: `npm run build`
+
+
+## Latest Session Updates (Audio + Settings)
+- Added per-card MP3 upload support in create/edit screens.
+- Added back-side audio playback button in study cards when audio exists.
+- Added a new Settings screen with `autoPlayAudioOnBack` toggle.
+- Added a Settings icon on the main Library screen header for quick access.
+- Persisted settings and item audio in Zustand (`zencards-storage-v4`).
+
+## Verification Done
+- `npm run lint` passed.
+- `npm run build` passed.
+- Captured UI screenshots for Home (settings icon) and Settings (audio toggle).

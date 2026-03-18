@@ -53,6 +53,7 @@ export function Study({ onNavigate, practiceItemId }: { onNavigate: (v: View) =>
   const items = useStore((s) => s.items);
   const getDueItems = useStore((s) => s.getDueItems);
   const reviewItem = useStore((s) => s.reviewItem);
+  const autoPlayAudioOnBack = useStore((s) => s.settings.autoPlayAudioOnBack);
   
   const isPractice = !!practiceItemId;
   const dueItems = isPractice ? [] : getDueItems();
@@ -122,12 +123,14 @@ export function Study({ onNavigate, practiceItemId }: { onNavigate: (v: View) =>
               transition={{ duration: 0.2 }}
               className="w-full"
             >
-              <Flashcard 
+              <Flashcard
                 header={getHeader()}
-                frontText={getFrontText()} 
-                backText={getBackText()} 
+                frontText={getFrontText()}
+                backText={getBackText()}
                 onFlip={() => setHasFlipped(true)}
                 resetKey={currentItem.id}
+                audioDataUrl={currentItem.audioDataUrl}
+                autoPlayAudioOnBack={autoPlayAudioOnBack}
               />
             </motion.div>
           ) : (
