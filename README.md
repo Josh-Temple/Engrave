@@ -33,6 +33,16 @@ Vercel will use:
 - Output directory: `dist`
 
 
+
+## Data Safety
+
+- App data is persisted in-browser with Zustand persistence.
+- The storage key is now kept stable and hydration includes normalization/migration safeguards for future schema changes.
+- In **Settings**, you can now:
+  - **Download backup** as JSON
+  - **Restore backup** from a previously exported JSON file
+- Recommended: export a backup before large updates or before switching browsers/devices.
+
 ## Handoff
 
 - 引き継ぎ情報は `HANDOFF.md` を参照してください。
