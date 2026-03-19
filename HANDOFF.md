@@ -1,51 +1,20 @@
 # HANDOFF
 
-## このリポジトリの現状
-- Vercel デプロイ準備済み（`vercel.json` 設定あり）
-- Settings 画面にバックアップ/リストア UI を追加済み
+## Current Status
+- The Vercel deployment setup is ready via `vercel.json`.
+- Settings already include backup/restore actions and audio playback preferences.
+- Study cards now keep long content in an independently scrollable area so users can read the full text without clipping.
 
-## デプロイ手順（Vercel）
-1. Vercel にリポジトリを import
-2. Environment Variables に `GEMINI_API_KEY` を設定
-3. デプロイ実行
+## Latest Session Changes
+- Updated the flashcard front/back layout to use a dedicated scroll container with `min-h-0`, `overflow-y-auto`, and preserved vertical centering for shorter content.
+- Kept the card header and optional audio button fixed while only the text region scrolls.
+- Updated the README to mention the long-text scrolling improvement.
 
-Vercel 側設定（`vercel.json`）:
-- Install Command: `npm install`
-- Build Command: `npm run build`
-- Output Directory: `dist`
-- SPA Rewrite: `/(.*)` → `/index.html`
+## Verification
+- `npm run lint`
+- `npm run build`
 
-## 開発・引き継ぎ時の注意
-- UI・デザインを変更する場合は、必ず `DESIGN_GUIDELINES.md` の方針に従ってください。
-  - Minimalist & Zen
-  - Mobile-First Ergonomics
-  - 色・タイポ・余白・アニメーションの規約
-- UI変更を伴うPRでは、可能な限りスクリーンショットを添付してください。
-
-## ローカル確認
-- 型チェック: `npm run lint`
-- 本番ビルド確認: `npm run build`
-
-
-## Latest Session Updates (Audio + Settings)
-- Added per-card MP3 upload support in create/edit screens.
-- Added back-side audio playback button in study cards when audio exists.
-- Added a new Settings screen with `autoPlayAudioOnBack` toggle.
-- Added a Settings icon on the main Library screen header for quick access.
-- Persisted settings and item audio in Zustand (`zencards-storage-v4`).
-
-## Verification Done
-- `npm run lint` passed.
-- `npm run build` passed.
-- Captured UI screenshots for Home (settings icon) and Settings (audio toggle).
-
-
-## Latest Session Updates (Persistence Hardening)
-- Added a stable persisted-state configuration with explicit schema versioning and migration/normalization safeguards.
-- Added JSON backup export from Settings.
-- Added JSON backup restore in Settings.
-- This reduces future data-loss risk during app updates, especially when the stored shape evolves.
-
-## Verification Done (Latest Session)
-- `npm run lint` passed.
-- `npm run build` passed.
+## Notes for the Next Session
+- If additional readability tuning is needed, review `src/components/Card.tsx` first because both the study and practice experiences share that component.
+- For UI changes, continue following `DESIGN_GUIDELINES.md`.
+- If a visual validation artifact is required later, use the browser screenshot flow when that tool is available in the environment.

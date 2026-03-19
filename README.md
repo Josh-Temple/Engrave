@@ -52,6 +52,7 @@ Vercel will use:
 ## Audio per Card
 
 - You can now attach an **MP3** audio file to each card during creation/edit.
+- Study cards now keep their content area independently scrollable, so long passages can be read fully without clipping.
 - On the study card back side, a **Play Audio** button is shown when audio exists.
 - In **Settings**, you can choose between:
   - Manual playback (default)
