@@ -43,6 +43,12 @@ Vercel will use:
   - **Restore backup** from a previously exported JSON file
 - Recommended: export a backup before large updates or before switching browsers/devices.
 
+## PWA Support
+
+- Engrave now includes a web app manifest, an SVG-based install icon, and a registered service worker for offline-friendly caching.
+- On supported browsers, you can install it to your home screen / desktop and reopen the app in a standalone window.
+- The offline experience caches the app shell and previously requested same-origin assets. To keep the PR text-only, the current icon setup uses SVG assets instead of committed PNG binaries.
+
 ## Handoff
 
 - 引き継ぎ情報は `HANDOFF.md` を参照してください。
