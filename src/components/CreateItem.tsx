@@ -81,7 +81,11 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
   const addItem = useStore((s) => s.addItem);
 
   const previewSegments = useMemo(() => segmentText(rawText, mode, language), [rawText, mode, language]);
+  const isSuggestedModeActive = mode === 'smart' && !hasManualModeOverride;
   const selectedModeHelp = MODE_OPTIONS.find((option) => option.value === mode)?.help;
+  const modeHelperText = isSuggestedModeActive
+    ? 'Automatically follows the recommended mode for the selected language.'
+    : selectedModeHelp;
   const canSaveQuick = quickSource.trim().length > 0 && rawText.trim().length > 0 && previewSegments.length > 0;
   const canSaveAdvanced = jsonInput.trim().length > 0;
 
@@ -191,7 +195,7 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
 
   const handleModeChange = (value: SegmentationMode) => {
     setMode(value);
-    setHasManualModeOverride(true);
+    setHasManualModeOverride(value !== 'smart');
     setError('');
   };
 
@@ -263,7 +267,7 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
               <div>
                 <div className="flex items-center justify-between gap-3 mb-2">
                   <label className="text-xs font-bold uppercase tracking-wider text-gray-400 block">Segmentation Mode</label>
-                  {!hasManualModeOverride && (
+                  {isSuggestedModeActive && (
                     <span className="text-xs text-gray-400">Using suggested mode</span>
                   )}
                 </div>
@@ -283,7 +287,7 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
                     </button>
                   ))}
                 </div>
-                {selectedModeHelp && <p className="text-sm text-gray-500 mt-3">{selectedModeHelp}</p>}
+                {modeHelperText && <p className="text-sm text-gray-500 mt-3">{modeHelperText}</p>}
               </div>
 
               <div>
