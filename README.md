@@ -38,7 +38,8 @@ Vercel will use:
 ## Create Flow
 
 - **Quick Add** is the default path for creating cards from raw text without writing JSON.
-- Choose a language, pick a segmentation mode (**Word**, **Character**, **Line**, or **Smart**), preview the generated tokens, optionally attach MP3 audio, and save.
+- Choose a language, pick a segmentation mode (**Word**, **Character**, **Line**, or **Smart**), preview the generated tokens, lightly adjust them in the built-in token editor, optionally attach MP3 audio, and save.
+- The Quick Add token editor is intentionally minimal: tap a token to **edit**, **split**, **merge left/right**, or **reset to the generated result** before saving.
 - **Advanced JSON** keeps the existing power-user flow for pasting structured segment data or using the AI prompt/template.
 
 ## Data Safety
