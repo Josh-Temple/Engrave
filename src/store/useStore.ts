@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { addDays, isBefore, startOfDay } from 'date-fns';
 
 export type Segment = [string, string?]; // [text, ruby/pinyin]
+export type ReviewRating = 'again' | 'hard' | 'good';
 
 export interface MemoryItem {
   id: string;
@@ -36,7 +37,7 @@ interface AppState {
   addItem: (source: string, segments: Segment[], audioDataUrl?: string) => void;
   deleteItem: (id: string) => void;
   updateItem: (id: string, updates: Partial<MemoryItem>) => void;
-  reviewItem: (id: string, passed: boolean) => void;
+  reviewItem: (id: string, rating: ReviewRating) => void;
   getDueItems: () => MemoryItem[];
   updateSettings: (updates: Partial<AppSettings>) => void;
   exportBackup: () => BackupPayload;
@@ -170,28 +171,33 @@ export const useStore = create<AppState>()(
         }));
       },
 
-      reviewItem: (id, passed) => {
+      reviewItem: (id, rating) => {
         set((state) => {
           const items = state.items.map((item) => {
             if (item.id !== id) return item;
 
             let { interval, easeFactor, repetitions, level } = item;
+            const previousInterval = interval;
 
-            if (passed) {
-              repetitions += 1;
-              if (repetitions === 1) interval = 1;
-              else if (repetitions === 2) interval = 6;
-              else interval = Math.round(interval * easeFactor);
-
-              // Increase difficulty level (max 5)
-              level = Math.min(5, level + 1);
-            } else {
+            if (rating === 'again') {
               repetitions = 0;
               interval = 1;
               easeFactor = Math.max(1.3, easeFactor - 0.2);
-
-              // Decrease difficulty level to relearn (min 0)
               level = Math.max(0, level - 1);
+            } else if (rating === 'hard') {
+              repetitions += 1;
+              if (repetitions === 1) interval = 1;
+              else if (repetitions === 2) interval = 3;
+              else interval = Math.max(1, Math.round(previousInterval * 1.2));
+
+              easeFactor = Math.max(1.3, easeFactor - 0.05);
+            } else {
+              repetitions += 1;
+              if (repetitions === 1) interval = 1;
+              else if (repetitions === 2) interval = 6;
+              else interval = Math.round(previousInterval * easeFactor);
+
+              level = Math.min(5, level + 1);
             }
 
             const nextReviewDate = addDays(new Date(), interval).getTime();
