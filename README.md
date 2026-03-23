@@ -71,3 +71,9 @@ Vercel will use:
   - Auto-play when the card back is shown
 
 > Note: Audio files are stored in local browser storage as Data URLs. Very large files may exceed storage limits.
+
+## Study Flow
+
+- Lower study levels still use deterministic cloze blanks, while full-recall cards now offer two optional pre-flip hints: a first-character skeleton and a light token reveal.
+- Full-recall hints are session-local UI only; the persisted `level` model remains 0-5 with reverse mode still at level 5.
+- Review now uses three ratings after flip: **Again**, **Hard**, and **Good**. Hard keeps the current prompt difficulty while applying a smaller interval increase than Good.
