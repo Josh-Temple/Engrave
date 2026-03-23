@@ -1,9 +1,23 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from "react";
 
-import { ArrowLeft, Check, Copy, Pencil, RotateCcw, Save, Scissors } from 'lucide-react';
-import { View } from '../App';
-import { segmentText, getSuggestedMode, QuickAddLanguage, SegmentationMode } from '../lib/segmentText';
-import { useStore, Segment } from '../store/useStore';
+import {
+  ArrowLeft,
+  Check,
+  Copy,
+  Pencil,
+  RotateCcw,
+  Save,
+  Scissors,
+  X,
+} from "lucide-react";
+import { View } from "../App";
+import {
+  segmentText,
+  getSuggestedMode,
+  QuickAddLanguage,
+  SegmentationMode,
+} from "../lib/segmentText";
+import { useStore, Segment } from "../store/useStore";
 
 const JSON_TEMPLATE = `{
   "source": "Enter source or title here",
@@ -34,43 +48,66 @@ Please convert the text provided by the user into the following JSON format.
   ]
 }`;
 
-type CreateTab = 'quick' | 'advanced';
-type TokenEditorMode = 'edit' | 'split' | null;
+type CreateTab = "quick" | "advanced";
+type TokenEditorMode = "edit" | "split" | null;
 
 const LANGUAGE_OPTIONS: { value: QuickAddLanguage; label: string }[] = [
-  { value: 'auto', label: 'Auto' },
-  { value: 'en', label: 'English' },
-  { value: 'es', label: 'Spanish' },
-  { value: 'fr', label: 'French' },
-  { value: 'de', label: 'German' },
-  { value: 'zh', label: 'Chinese' },
-  { value: 'ja', label: 'Japanese' },
-  { value: 'other', label: 'Other' },
+  { value: "auto", label: "Auto" },
+  { value: "en", label: "English" },
+  { value: "es", label: "Spanish" },
+  { value: "fr", label: "French" },
+  { value: "de", label: "German" },
+  { value: "zh", label: "Chinese" },
+  { value: "ja", label: "Japanese" },
+  { value: "other", label: "Other" },
 ];
 
-const MODE_OPTIONS: { value: SegmentationMode; label: string; help: string }[] = [
-  { value: 'word', label: 'Word', help: 'Best for English and other spaced languages.' },
-  { value: 'character', label: 'Character', help: 'Best for Chinese, Japanese, or fine-grained recall.' },
-  { value: 'line', label: 'Line', help: 'Best for poems, speeches, and preserving line breaks.' },
-  { value: 'smart', label: 'Smart', help: 'Rule-based automatic default based on language and text.' },
-];
+const MODE_OPTIONS: { value: SegmentationMode; label: string; help: string }[] =
+  [
+    {
+      value: "word",
+      label: "Word",
+      help: "Best for English and other spaced languages.",
+    },
+    {
+      value: "character",
+      label: "Character",
+      help: "Best for Chinese, Japanese, or fine-grained recall.",
+    },
+    {
+      value: "line",
+      label: "Line",
+      help: "Best for poems, speeches, and preserving line breaks.",
+    },
+    {
+      value: "smart",
+      label: "Smart",
+      help: "Rule-based automatic default based on language and text.",
+    },
+  ];
 
 const tabButtonClass = (active: boolean) =>
   `flex-1 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${
-    active ? 'bg-gray-900 text-white shadow-sm' : 'bg-transparent text-gray-500 hover:text-gray-900'
+    active
+      ? "bg-gray-900 text-white shadow-sm"
+      : "bg-transparent text-gray-500 hover:text-gray-900"
   }`;
 
 const formatPreviewToken = (token: string) => {
-  if (token === '\n') return '↵';
-  if (token === ' ') return '␠';
+  if (token === "\n") return "↵";
+  if (token === " ") return "␠";
   return token;
 };
 
-const cloneSegments = (segments: Segment[]): Segment[] => segments.map(([token, reading]) => [token, reading]);
+const cloneSegments = (segments: Segment[]): Segment[] =>
+  segments.map(([token, reading]) => [token, reading]);
 
 const areSegmentsEqual = (left: Segment[], right: Segment[]) => {
   if (left.length !== right.length) return false;
-  return left.every(([leftToken], index) => leftToken === right[index]?.[0]);
+  return left.every(
+    ([leftToken, leftReading], index) =>
+      leftToken === right[index]?.[0] && leftReading === right[index]?.[1],
+  );
 };
 
 const replaceSegmentText = (segment: Segment, token: string): Segment => {
@@ -80,41 +117,81 @@ const replaceSegmentText = (segment: Segment, token: string): Segment => {
   return [token];
 };
 
+const replaceSegmentReading = (segment: Segment, reading: string): Segment => {
+  const normalizedReading = reading.trim();
+  if (!normalizedReading) {
+    return [segment[0]];
+  }
+  return [segment[0], normalizedReading];
+};
+
+const mergeSegmentText = (left: Segment, right: Segment): Segment => [
+  left[0] + right[0],
+];
+
+const tokenHasReading = (segment: Segment) => Boolean(segment[1]?.trim());
+
+const isReadingDisabledToken = (token: string) => token === "\n";
+
 export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
-  const [activeTab, setActiveTab] = useState<CreateTab>('quick');
-  const [quickSource, setQuickSource] = useState('');
-  const [rawText, setRawText] = useState('');
-  const [language, setLanguage] = useState<QuickAddLanguage>('auto');
-  const [mode, setMode] = useState<SegmentationMode>(getSuggestedMode('auto'));
+  const [activeTab, setActiveTab] = useState<CreateTab>("quick");
+  const [quickSource, setQuickSource] = useState("");
+  const [rawText, setRawText] = useState("");
+  const [language, setLanguage] = useState<QuickAddLanguage>("auto");
+  const [mode, setMode] = useState<SegmentationMode>(getSuggestedMode("auto"));
   const [hasManualModeOverride, setHasManualModeOverride] = useState(false);
-  const [jsonInput, setJsonInput] = useState('');
-  const [error, setError] = useState('');
+  const [jsonInput, setJsonInput] = useState("");
+  const [error, setError] = useState("");
   const [copiedTemplate, setCopiedTemplate] = useState(false);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
-  const [audioDataUrl, setAudioDataUrl] = useState<string>('');
-  const [audioFileName, setAudioFileName] = useState('');
+  const [audioDataUrl, setAudioDataUrl] = useState<string>("");
+  const [audioFileName, setAudioFileName] = useState("");
   const [editableSegments, setEditableSegments] = useState<Segment[]>([]);
   const [hasManualTokenEdits, setHasManualTokenEdits] = useState(false);
-  const [selectedTokenIndex, setSelectedTokenIndex] = useState<number | null>(null);
+  const [selectedTokenIndex, setSelectedTokenIndex] = useState<number | null>(
+    null,
+  );
   const [tokenEditorMode, setTokenEditorMode] = useState<TokenEditorMode>(null);
-  const [tokenDraft, setTokenDraft] = useState('');
+  const [tokenDraft, setTokenDraft] = useState("");
+  const [readingDraft, setReadingDraft] = useState("");
   const [splitIndexDraft, setSplitIndexDraft] = useState(1);
   const selectedTokenRef = useRef<HTMLButtonElement | null>(null);
   const addItem = useStore((s) => s.addItem);
 
-  const previewSegments = useMemo(() => segmentText(rawText, mode, language), [rawText, mode, language]);
-  const isSuggestedModeActive = mode === 'smart' && !hasManualModeOverride;
-  const selectedModeHelp = MODE_OPTIONS.find((option) => option.value === mode)?.help;
+  const previewSegments = useMemo(
+    () => segmentText(rawText, mode, language),
+    [rawText, mode, language],
+  );
+  const isSuggestedModeActive = mode === "smart" && !hasManualModeOverride;
+  const selectedModeHelp = MODE_OPTIONS.find(
+    (option) => option.value === mode,
+  )?.help;
   const modeHelperText = isSuggestedModeActive
-    ? 'Automatically follows the recommended mode for the selected language.'
+    ? "Automatically follows the recommended mode for the selected language."
     : selectedModeHelp;
-  const hasTokenSelection = selectedTokenIndex !== null && selectedTokenIndex >= 0 && selectedTokenIndex < editableSegments.length;
-  const selectedSegment = hasTokenSelection ? editableSegments[selectedTokenIndex] : null;
-  const selectedToken = selectedSegment?.[0] ?? '';
-  const canSplitSelectedToken = Boolean(selectedSegment && selectedToken.length > 1 && selectedToken !== '\n' && selectedToken !== ' ');
-  const isEditedFromGenerated = hasManualTokenEdits && !areSegmentsEqual(editableSegments, previewSegments);
+  const hasTokenSelection =
+    selectedTokenIndex !== null &&
+    selectedTokenIndex >= 0 &&
+    selectedTokenIndex < editableSegments.length;
+  const selectedSegment = hasTokenSelection
+    ? editableSegments[selectedTokenIndex]
+    : null;
+  const selectedToken = selectedSegment?.[0] ?? "";
+  const selectedReading = selectedSegment?.[1] ?? "";
+  const canSplitSelectedToken = Boolean(
+    selectedSegment &&
+    selectedToken.length > 1 &&
+    selectedToken !== "\n" &&
+    selectedToken !== " ",
+  );
+  const isReadingInputDisabled = isReadingDisabledToken(selectedToken);
+  const isEditedFromGenerated =
+    hasManualTokenEdits && !areSegmentsEqual(editableSegments, previewSegments);
   const finalQuickSegments = editableSegments;
-  const canSaveQuick = quickSource.trim().length > 0 && rawText.trim().length > 0 && finalQuickSegments.length > 0;
+  const canSaveQuick =
+    quickSource.trim().length > 0 &&
+    rawText.trim().length > 0 &&
+    finalQuickSegments.length > 0;
   const canSaveAdvanced = jsonInput.trim().length > 0;
 
   useEffect(() => {
@@ -122,17 +199,25 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
     setHasManualTokenEdits(false);
     setSelectedTokenIndex(null);
     setTokenEditorMode(null);
-    setTokenDraft('');
+    setTokenDraft("");
+    setReadingDraft("");
     setSplitIndexDraft(1);
   }, [previewSegments]);
 
   useEffect(() => {
     if (hasTokenSelection) {
-      selectedTokenRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+      selectedTokenRef.current?.scrollIntoView({
+        block: "nearest",
+        inline: "nearest",
+        behavior: "smooth",
+      });
     }
   }, [hasTokenSelection, selectedTokenIndex]);
 
-  const markManualTokenEdit = (nextSegments: Segment[], nextSelectedIndex: number | null = selectedTokenIndex) => {
+  const markManualTokenEdit = (
+    nextSegments: Segment[],
+    nextSelectedIndex: number | null = selectedTokenIndex,
+  ) => {
     setEditableSegments(nextSegments);
     setHasManualTokenEdits(true);
     setSelectedTokenIndex(nextSelectedIndex);
@@ -140,34 +225,34 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
   };
 
   const handleQuickSave = () => {
-    setError('');
+    setError("");
 
     if (!quickSource.trim()) {
-      setError('Source / Title is required.');
+      setError("Source / Title is required.");
       return;
     }
 
     if (!rawText.trim()) {
-      setError('Raw text is required.');
+      setError("Raw text is required.");
       return;
     }
 
     if (finalQuickSegments.length === 0) {
-      setError('Could not generate any segments from the provided text.');
+      setError("Could not generate any segments from the provided text.");
       return;
     }
 
     addItem(quickSource.trim(), finalQuickSegments, audioDataUrl || undefined);
-    onNavigate('home');
+    onNavigate("home");
   };
 
   const handleAdvancedSave = () => {
-    setError('');
+    setError("");
     if (!jsonInput.trim()) return;
 
     try {
       const parsed = JSON.parse(jsonInput);
-      if (!parsed.source || typeof parsed.source !== 'string') {
+      if (!parsed.source || typeof parsed.source !== "string") {
         throw new Error('Invalid JSON: "source" must be a string.');
       }
       if (!Array.isArray(parsed.segments)) {
@@ -175,20 +260,26 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
       }
 
       for (const seg of parsed.segments) {
-        if (!Array.isArray(seg) || typeof seg[0] !== 'string') {
-          throw new Error('Invalid JSON: Each segment must be an array starting with a string.');
+        if (!Array.isArray(seg) || typeof seg[0] !== "string") {
+          throw new Error(
+            "Invalid JSON: Each segment must be an array starting with a string.",
+          );
         }
       }
 
-      addItem(parsed.source, parsed.segments as Segment[], audioDataUrl || undefined);
-      onNavigate('home');
+      addItem(
+        parsed.source,
+        parsed.segments as Segment[],
+        audioDataUrl || undefined,
+      );
+      onNavigate("home");
     } catch (e: any) {
-      setError(e.message || 'Invalid JSON format');
+      setError(e.message || "Invalid JSON format");
     }
   };
 
   const handleSave = () => {
-    if (activeTab === 'quick') {
+    if (activeTab === "quick") {
       handleQuickSave();
       return;
     }
@@ -199,8 +290,8 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
   const handleAudioUpload = (file?: File) => {
     if (!file) return;
 
-    if (file.type !== 'audio/mpeg' && file.type !== 'audio/mp3') {
-      setError('Only MP3 files are supported.');
+    if (file.type !== "audio/mpeg" && file.type !== "audio/mp3") {
+      setError("Only MP3 files are supported.");
       return;
     }
 
@@ -208,21 +299,21 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
     reader.onload = () => {
       setAudioDataUrl(String(reader.result));
       setAudioFileName(file.name);
-      setError('');
+      setError("");
     };
-    reader.onerror = () => setError('Failed to read the audio file.');
+    reader.onerror = () => setError("Failed to read the audio file.");
     reader.readAsDataURL(file);
   };
 
   const clearAudio = () => {
-    setAudioDataUrl('');
-    setAudioFileName('');
+    setAudioDataUrl("");
+    setAudioFileName("");
   };
 
-  const copyToClipboard = async (text: string, type: 'template' | 'prompt') => {
+  const copyToClipboard = async (text: string, type: "template" | "prompt") => {
     try {
       await navigator.clipboard.writeText(text);
-      if (type === 'template') {
+      if (type === "template") {
         setCopiedTemplate(true);
         setTimeout(() => setCopiedTemplate(false), 2000);
       } else {
@@ -230,7 +321,7 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
         setTimeout(() => setCopiedPrompt(false), 2000);
       }
     } catch (err) {
-      console.error('Failed to copy text: ', err);
+      console.error("Failed to copy text: ", err);
     }
   };
 
@@ -239,74 +330,119 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
     if (!hasManualModeOverride) {
       setMode(getSuggestedMode(value));
     }
-    setError('');
+    setError("");
   };
 
   const handleModeChange = (value: SegmentationMode) => {
     setMode(value);
-    setHasManualModeOverride(value !== 'smart');
-    setError('');
+    setHasManualModeOverride(value !== "smart");
+    setError("");
   };
 
   const handleTokenSelection = (index: number) => {
-    setSelectedTokenIndex((currentIndex) => (currentIndex === index ? null : index));
+    setSelectedTokenIndex((currentIndex) => {
+      const nextIndex = currentIndex === index ? null : index;
+      setReadingDraft(
+        nextIndex === null ? "" : (editableSegments[nextIndex]?.[1] ?? ""),
+      );
+      return nextIndex;
+    });
     setTokenEditorMode(null);
-    setTokenDraft('');
+    setTokenDraft("");
     setSplitIndexDraft(1);
   };
 
   const handleEditStart = () => {
     if (!selectedSegment) return;
     setTokenDraft(selectedSegment[0]);
-    setTokenEditorMode('edit');
+    setTokenEditorMode("edit");
+  };
+
+  const handleReadingChange = (value: string) => {
+    setReadingDraft(value);
+
+    if (
+      selectedTokenIndex === null ||
+      !selectedSegment ||
+      isReadingDisabledToken(selectedSegment[0])
+    )
+      return;
+
+    const nextSegments = cloneSegments(editableSegments);
+    nextSegments[selectedTokenIndex] = replaceSegmentReading(
+      selectedSegment,
+      value,
+    );
+    setEditableSegments(nextSegments);
+    setHasManualTokenEdits(true);
+  };
+
+  const handleReadingClear = () => {
+    handleReadingChange("");
   };
 
   const handleEditApply = () => {
     if (selectedTokenIndex === null || !selectedSegment) return;
     const nextSegments = cloneSegments(editableSegments);
-    nextSegments[selectedTokenIndex] = replaceSegmentText(selectedSegment, tokenDraft);
+    nextSegments[selectedTokenIndex] = replaceSegmentText(
+      selectedSegment,
+      tokenDraft,
+    );
     markManualTokenEdit(nextSegments, selectedTokenIndex);
   };
 
   const handleSplitStart = () => {
     if (!selectedSegment || !canSplitSelectedToken) return;
-    setSplitIndexDraft(Math.min(Math.max(1, Math.floor(selectedToken.length / 2)), selectedToken.length - 1));
-    setTokenEditorMode('split');
+    setSplitIndexDraft(
+      Math.min(
+        Math.max(1, Math.floor(selectedToken.length / 2)),
+        selectedToken.length - 1,
+      ),
+    );
+    setTokenEditorMode("split");
   };
 
   const handleSplitApply = () => {
-    if (selectedTokenIndex === null || !selectedSegment || !canSplitSelectedToken) return;
+    if (
+      selectedTokenIndex === null ||
+      !selectedSegment ||
+      !canSplitSelectedToken
+    )
+      return;
     const left = selectedToken.slice(0, splitIndexDraft);
     const right = selectedToken.slice(splitIndexDraft);
     if (!left || !right) return;
 
     const nextSegments = cloneSegments(editableSegments);
-    const replacement: Segment[] = [replaceSegmentText(selectedSegment, left), [right]];
+    const replacement: Segment[] = [[left], [right]];
     nextSegments.splice(selectedTokenIndex, 1, ...replacement);
     markManualTokenEdit(nextSegments, selectedTokenIndex);
   };
 
-  const handleMerge = (direction: 'left' | 'right') => {
+  const handleMerge = (direction: "left" | "right") => {
     if (selectedTokenIndex === null || !selectedSegment) return;
 
-    if (direction === 'left' && selectedTokenIndex > 0) {
+    if (direction === "left" && selectedTokenIndex > 0) {
       const previousSegment = editableSegments[selectedTokenIndex - 1];
       const nextSegments = cloneSegments(editableSegments);
       nextSegments.splice(
         selectedTokenIndex - 1,
         2,
-        replaceSegmentText(previousSegment, `${previousSegment[0]}${selectedSegment[0]}`),
+        mergeSegmentText(previousSegment, selectedSegment),
       );
       markManualTokenEdit(nextSegments, selectedTokenIndex - 1);
     }
 
-    if (direction === 'right' && selectedTokenIndex < editableSegments.length - 1) {
+    if (
+      direction === "right" &&
+      selectedTokenIndex < editableSegments.length - 1
+    ) {
       const nextSegment = editableSegments[selectedTokenIndex + 1];
       const nextSegments = cloneSegments(editableSegments);
       nextSegments.splice(
         selectedTokenIndex,
         2,
-        replaceSegmentText(selectedSegment, `${selectedSegment[0]}${nextSegment[0]}`),
+        mergeSegmentText(selectedSegment, nextSegment),
       );
       markManualTokenEdit(nextSegments, selectedTokenIndex);
     }
@@ -317,22 +453,30 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
     setHasManualTokenEdits(false);
     setSelectedTokenIndex(null);
     setTokenEditorMode(null);
-    setTokenDraft('');
+    setTokenDraft("");
+    setReadingDraft("");
     setSplitIndexDraft(1);
   };
 
   return (
     <div className="max-w-md mx-auto h-screen flex flex-col bg-gray-50">
       <div className="p-6 flex items-center justify-between bg-white border-b border-gray-100 sticky top-0 z-10">
-        <button onClick={() => onNavigate('home')} className="p-2 -ml-2 text-gray-400 hover:text-gray-900 transition-colors">
+        <button
+          onClick={() => onNavigate("home")}
+          className="p-2 -ml-2 text-gray-400 hover:text-gray-900 transition-colors"
+        >
           <ArrowLeft size={24} />
         </button>
         <h1 className="text-lg font-medium text-gray-900">Create Card</h1>
         <button
           onClick={handleSave}
-          disabled={activeTab === 'quick' ? !canSaveQuick : !canSaveAdvanced}
+          disabled={activeTab === "quick" ? !canSaveQuick : !canSaveAdvanced}
           className="p-2 -mr-2 text-gray-900 hover:text-gray-600 disabled:text-gray-300 transition-colors"
-          aria-label={activeTab === 'quick' ? 'Save quick add card' : 'Save advanced JSON card'}
+          aria-label={
+            activeTab === "quick"
+              ? "Save quick add card"
+              : "Save advanced JSON card"
+          }
         >
           <Save size={24} />
         </button>
@@ -340,10 +484,18 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
 
       <div className="flex-1 p-6 flex flex-col gap-4 overflow-y-auto pb-24">
         <div className="bg-white border border-gray-100 rounded-2xl p-1 flex gap-1">
-          <button type="button" onClick={() => setActiveTab('quick')} className={tabButtonClass(activeTab === 'quick')}>
+          <button
+            type="button"
+            onClick={() => setActiveTab("quick")}
+            className={tabButtonClass(activeTab === "quick")}
+          >
             Quick Add
           </button>
-          <button type="button" onClick={() => setActiveTab('advanced')} className={tabButtonClass(activeTab === 'advanced')}>
+          <button
+            type="button"
+            onClick={() => setActiveTab("advanced")}
+            className={tabButtonClass(activeTab === "advanced")}
+          >
             Advanced JSON
           </button>
         </div>
@@ -354,17 +506,19 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
           </div>
         )}
 
-        {activeTab === 'quick' ? (
+        {activeTab === "quick" ? (
           <>
             <div className="bg-white border border-gray-100 rounded-2xl p-4 space-y-4">
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-gray-400 block mb-2">Source / Title</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-gray-400 block mb-2">
+                  Source / Title
+                </label>
                 <input
                   type="text"
                   value={quickSource}
                   onChange={(e) => {
                     setQuickSource(e.target.value);
-                    setError('');
+                    setError("");
                   }}
                   placeholder="e.g. The Raven, Favorite Quote, Lesson 3"
                   className="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-base text-gray-900 outline-none transition-colors focus:border-gray-300 focus:bg-white"
@@ -372,10 +526,14 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
               </div>
 
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-gray-400 block mb-2">Language</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-gray-400 block mb-2">
+                  Language
+                </label>
                 <select
                   value={language}
-                  onChange={(e) => handleLanguageChange(e.target.value as QuickAddLanguage)}
+                  onChange={(e) =>
+                    handleLanguageChange(e.target.value as QuickAddLanguage)
+                  }
                   className="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-base text-gray-900 outline-none transition-colors focus:border-gray-300 focus:bg-white"
                 >
                   {LANGUAGE_OPTIONS.map((option) => (
@@ -388,9 +546,13 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
 
               <div>
                 <div className="flex items-center justify-between gap-3 mb-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-gray-400 block">Segmentation Mode</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-400 block">
+                    Segmentation Mode
+                  </label>
                   {isSuggestedModeActive && (
-                    <span className="text-xs text-gray-400">Using suggested mode</span>
+                    <span className="text-xs text-gray-400">
+                      Using suggested mode
+                    </span>
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -401,24 +563,28 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
                       onClick={() => handleModeChange(option.value)}
                       className={`rounded-xl border px-3 py-3 text-sm font-medium text-left transition-colors ${
                         mode === option.value
-                          ? 'border-gray-900 bg-gray-900 text-white'
-                          : 'border-gray-100 bg-gray-50 text-gray-700 hover:border-gray-200 hover:bg-white'
+                          ? "border-gray-900 bg-gray-900 text-white"
+                          : "border-gray-100 bg-gray-50 text-gray-700 hover:border-gray-200 hover:bg-white"
                       }`}
                     >
                       {option.label}
                     </button>
                   ))}
                 </div>
-                {modeHelperText && <p className="text-sm text-gray-500 mt-3">{modeHelperText}</p>}
+                {modeHelperText && (
+                  <p className="text-sm text-gray-500 mt-3">{modeHelperText}</p>
+                )}
               </div>
 
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-gray-400 block mb-2">Raw Text</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-gray-400 block mb-2">
+                  Raw Text
+                </label>
                 <textarea
                   value={rawText}
                   onChange={(e) => {
                     setRawText(e.target.value);
-                    setError('');
+                    setError("");
                   }}
                   placeholder="Paste the text you want to memorize..."
                   className="w-full min-h-[180px] rounded-2xl border border-gray-100 bg-gray-50 p-4 text-base text-gray-900 outline-none resize-y leading-relaxed transition-colors focus:border-gray-300 focus:bg-white"
@@ -429,7 +595,10 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
             <div className="bg-white border border-gray-100 rounded-2xl p-4 space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-medium text-gray-900">Preview</p>
-                <p className="text-sm text-gray-500">{previewSegments.length} segment{previewSegments.length === 1 ? '' : 's'}</p>
+                <p className="text-sm text-gray-500">
+                  {previewSegments.length} segment
+                  {previewSegments.length === 1 ? "" : "s"}
+                </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 {previewSegments.slice(0, 30).map(([token], index) => (
@@ -441,11 +610,15 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
                   </span>
                 ))}
                 {previewSegments.length === 0 && (
-                  <p className="text-sm text-gray-400">Generated segments will appear here as you type.</p>
+                  <p className="text-sm text-gray-400">
+                    Generated segments will appear here as you type.
+                  </p>
                 )}
               </div>
               {previewSegments.length > 30 && (
-                <p className="text-sm text-gray-500">+ {previewSegments.length - 30} more</p>
+                <p className="text-sm text-gray-500">
+                  + {previewSegments.length - 30} more
+                </p>
               )}
             </div>
 
@@ -453,12 +626,18 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
               <div className="bg-white border border-gray-100 rounded-2xl p-4 space-y-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Edit tokens</p>
-                    <p className="text-sm text-gray-500 mt-1">Use this only for small corrections.</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      Edit tokens
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Use this only for small corrections.
+                    </p>
                   </div>
                   <div className="flex items-center gap-2">
                     {isEditedFromGenerated && (
-                      <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">Edited</span>
+                      <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
+                        Edited
+                      </span>
                     )}
                     {isEditedFromGenerated && (
                       <button
@@ -474,8 +653,10 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
                 </div>
 
                 <div className="flex flex-wrap gap-2 max-h-56 overflow-y-auto pr-1">
-                  {editableSegments.map(([token], index) => {
+                  {editableSegments.map((segment, index) => {
+                    const [token] = segment;
                     const isSelected = selectedTokenIndex === index;
+                    const hasReading = tokenHasReading(segment);
                     return (
                       <button
                         key={`${token}-${index}`}
@@ -484,12 +665,21 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
                         onClick={() => handleTokenSelection(index)}
                         className={`rounded-xl border px-3 py-2 text-sm transition-colors ${
                           isSelected
-                            ? 'border-gray-900 bg-gray-900 text-white'
-                            : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300 hover:bg-white'
+                            ? "border-gray-900 bg-gray-900 text-white"
+                            : "border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300 hover:bg-white"
                         }`}
                         aria-pressed={isSelected}
                       >
-                        {formatPreviewToken(token)}
+                        <span className="inline-flex items-center gap-1.5">
+                          <span>{formatPreviewToken(token)}</span>
+                          {hasReading && (
+                            <span
+                              className={`h-1.5 w-1.5 rounded-full ${isSelected ? "bg-white/80" : "bg-indigo-400"}`}
+                              aria-label="Has reading"
+                              title="Has reading"
+                            />
+                          )}
+                        </span>
                       </button>
                     );
                   })}
@@ -499,16 +689,63 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
                   <div className="rounded-2xl border border-gray-100 bg-gray-50 p-3 space-y-3">
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Selected token</p>
-                        <p className="text-sm text-gray-900 mt-1">{formatPreviewToken(selectedToken)}</p>
+                        <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                          Selected token
+                        </p>
+                        <p className="text-sm text-gray-900 mt-1">
+                          {formatPreviewToken(selectedToken)}
+                        </p>
+                        {selectedReading && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Reading: {selectedReading}
+                          </p>
+                        )}
                       </div>
                       <button
                         type="button"
-                        onClick={() => setSelectedTokenIndex(null)}
+                        onClick={() => {
+                          setSelectedTokenIndex(null);
+                          setReadingDraft("");
+                        }}
                         className="text-xs font-medium text-gray-500 hover:text-gray-900"
                       >
                         Deselect
                       </button>
+                    </div>
+
+                    <div className="rounded-2xl border border-gray-100 bg-white p-3 space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <label className="text-xs font-bold uppercase tracking-wider text-gray-400 block">
+                            Reading
+                          </label>
+                          <p className="text-xs text-gray-400 mt-1">
+                            Optional: add ruby / pinyin for this token.
+                          </p>
+                        </div>
+                        {selectedReading && !isReadingInputDisabled && (
+                          <button
+                            type="button"
+                            onClick={handleReadingClear}
+                            className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-gray-300 hover:text-gray-900"
+                          >
+                            <X size={14} />
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        value={readingDraft}
+                        onChange={(e) => handleReadingChange(e.target.value)}
+                        disabled={isReadingInputDisabled}
+                        placeholder={
+                          isReadingInputDisabled
+                            ? "Readings are disabled for newline tokens."
+                            : "e.g. ふりがな / pinyin"
+                        }
+                        className="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-base text-gray-900 outline-none transition-colors focus:border-gray-300 focus:bg-white disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+                      />
                     </div>
 
                     <div className="flex flex-wrap gap-2">
@@ -531,7 +768,7 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleMerge('left')}
+                        onClick={() => handleMerge("left")}
                         disabled={selectedTokenIndex === 0}
                         className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:border-gray-300 hover:text-gray-900 disabled:cursor-not-allowed disabled:border-gray-100 disabled:text-gray-300"
                       >
@@ -539,24 +776,31 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleMerge('right')}
-                        disabled={selectedTokenIndex === editableSegments.length - 1}
+                        onClick={() => handleMerge("right")}
+                        disabled={
+                          selectedTokenIndex === editableSegments.length - 1
+                        }
                         className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:border-gray-300 hover:text-gray-900 disabled:cursor-not-allowed disabled:border-gray-100 disabled:text-gray-300"
                       >
                         Merge Right
                       </button>
                     </div>
 
-                    {tokenEditorMode === 'edit' && (
+                    {tokenEditorMode === "edit" && (
                       <div className="rounded-2xl border border-gray-100 bg-white p-3 space-y-3">
-                        <label className="text-xs font-bold uppercase tracking-wider text-gray-400 block">Edit token text</label>
+                        <label className="text-xs font-bold uppercase tracking-wider text-gray-400 block">
+                          Edit token text
+                        </label>
                         <textarea
                           value={tokenDraft}
                           onChange={(e) => setTokenDraft(e.target.value)}
                           rows={2}
                           className="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-base text-gray-900 outline-none resize-y transition-colors focus:border-gray-300 focus:bg-white"
                         />
-                        <p className="text-xs text-gray-400">Spaces and line breaks are editable. Display shows ␠ for spaces and ↵ for newlines.</p>
+                        <p className="text-xs text-gray-400">
+                          Spaces and line breaks are editable. Display shows ␠
+                          for spaces and ↵ for newlines.
+                        </p>
                         <div className="flex justify-end gap-2">
                           <button
                             type="button"
@@ -576,62 +820,82 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
                       </div>
                     )}
 
-                    {tokenEditorMode === 'split' && selectedToken.length > 1 && (
-                      <div className="rounded-2xl border border-gray-100 bg-white p-3 space-y-3">
-                        <div>
-                          <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Split token</p>
-                          <p className="text-sm text-gray-900 mt-1 break-all">{selectedToken}</p>
+                    {tokenEditorMode === "split" &&
+                      selectedToken.length > 1 && (
+                        <div className="rounded-2xl border border-gray-100 bg-white p-3 space-y-3">
+                          <div>
+                            <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                              Split token
+                            </p>
+                            <p className="text-sm text-gray-900 mt-1 break-all">
+                              {selectedToken}
+                            </p>
+                          </div>
+                          <div>
+                            <label className="text-xs font-bold uppercase tracking-wider text-gray-400 block mb-2">
+                              Split position
+                            </label>
+                            <input
+                              type="range"
+                              min={1}
+                              max={selectedToken.length - 1}
+                              step={1}
+                              value={splitIndexDraft}
+                              onChange={(e) =>
+                                setSplitIndexDraft(Number(e.target.value))
+                              }
+                              className="w-full"
+                            />
+                            <input
+                              type="number"
+                              min={1}
+                              max={selectedToken.length - 1}
+                              value={splitIndexDraft}
+                              onChange={(e) => {
+                                const value = Number(e.target.value);
+                                if (Number.isNaN(value)) return;
+                                setSplitIndexDraft(
+                                  Math.min(
+                                    Math.max(1, value),
+                                    selectedToken.length - 1,
+                                  ),
+                                );
+                              }}
+                              className="mt-3 w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-base text-gray-900 outline-none transition-colors focus:border-gray-300 focus:bg-white"
+                            />
+                          </div>
+                          <div className="rounded-xl bg-gray-50 px-3 py-2 text-sm text-gray-600 break-all">
+                            <span>
+                              {selectedToken.slice(0, splitIndexDraft) || " "}
+                            </span>
+                            <span className="mx-2 text-gray-300">|</span>
+                            <span>
+                              {selectedToken.slice(splitIndexDraft) || " "}
+                            </span>
+                          </div>
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setTokenEditorMode(null)}
+                              className="rounded-full px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-900"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleSplitApply}
+                              className="rounded-full bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-800"
+                            >
+                              Split token
+                            </button>
+                          </div>
                         </div>
-                        <div>
-                          <label className="text-xs font-bold uppercase tracking-wider text-gray-400 block mb-2">Split position</label>
-                          <input
-                            type="range"
-                            min={1}
-                            max={selectedToken.length - 1}
-                            step={1}
-                            value={splitIndexDraft}
-                            onChange={(e) => setSplitIndexDraft(Number(e.target.value))}
-                            className="w-full"
-                          />
-                          <input
-                            type="number"
-                            min={1}
-                            max={selectedToken.length - 1}
-                            value={splitIndexDraft}
-                            onChange={(e) => {
-                              const value = Number(e.target.value);
-                              if (Number.isNaN(value)) return;
-                              setSplitIndexDraft(Math.min(Math.max(1, value), selectedToken.length - 1));
-                            }}
-                            className="mt-3 w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-base text-gray-900 outline-none transition-colors focus:border-gray-300 focus:bg-white"
-                          />
-                        </div>
-                        <div className="rounded-xl bg-gray-50 px-3 py-2 text-sm text-gray-600 break-all">
-                          <span>{selectedToken.slice(0, splitIndexDraft) || ' '}</span>
-                          <span className="mx-2 text-gray-300">|</span>
-                          <span>{selectedToken.slice(splitIndexDraft) || ' '}</span>
-                        </div>
-                        <div className="flex justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setTokenEditorMode(null)}
-                            className="rounded-full px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-900"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleSplitApply}
-                            className="rounded-full bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-800"
-                          >
-                            Split token
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                      )}
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-400">Tap a token to make a small correction before saving.</p>
+                  <p className="text-sm text-gray-400">
+                    Tap a token to make a small correction before saving.
+                  </p>
                 )}
               </div>
             )}
@@ -640,18 +904,26 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
           <>
             <div className="flex gap-2 mb-2">
               <button
-                onClick={() => copyToClipboard(JSON_TEMPLATE, 'template')}
+                onClick={() => copyToClipboard(JSON_TEMPLATE, "template")}
                 className="flex-1 flex items-center justify-center gap-2 py-2 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-medium transition-colors"
               >
-                {copiedTemplate ? <Check size={16} className="text-green-600" /> : <Copy size={16} />}
-                {copiedTemplate ? 'Copied!' : 'Copy Template'}
+                {copiedTemplate ? (
+                  <Check size={16} className="text-green-600" />
+                ) : (
+                  <Copy size={16} />
+                )}
+                {copiedTemplate ? "Copied!" : "Copy Template"}
               </button>
               <button
-                onClick={() => copyToClipboard(AI_PROMPT, 'prompt')}
+                onClick={() => copyToClipboard(AI_PROMPT, "prompt")}
                 className="flex-1 flex items-center justify-center gap-2 py-2 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-sm font-medium transition-colors"
               >
-                {copiedPrompt ? <Check size={16} className="text-green-600" /> : <Copy size={16} />}
-                {copiedPrompt ? 'Copied!' : 'Copy AI Prompt'}
+                {copiedPrompt ? (
+                  <Check size={16} className="text-green-600" />
+                ) : (
+                  <Copy size={16} />
+                )}
+                {copiedPrompt ? "Copied!" : "Copy AI Prompt"}
               </button>
             </div>
 
@@ -659,7 +931,7 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
               value={jsonInput}
               onChange={(e) => {
                 setJsonInput(e.target.value);
-                setError('');
+                setError("");
               }}
               placeholder="Paste AI-generated JSON here..."
               className="w-full flex-1 text-base font-mono placeholder:text-gray-300 text-gray-900 outline-none resize-none leading-relaxed bg-white p-4 rounded-2xl border border-gray-100 focus:border-gray-300 focus:bg-white transition-colors min-h-[320px]"
@@ -669,9 +941,15 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
 
         <div className="bg-white border border-gray-100 rounded-2xl p-4 space-y-3">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Audio (MP3)</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+              Audio (MP3)
+            </p>
             {audioDataUrl && (
-              <button type="button" onClick={clearAudio} className="text-xs font-medium text-red-500 hover:text-red-600">
+              <button
+                type="button"
+                onClick={clearAudio}
+                className="text-xs font-medium text-red-500 hover:text-red-600"
+              >
                 Remove
               </button>
             )}
@@ -682,7 +960,11 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
             onChange={(e) => handleAudioUpload(e.target.files?.[0])}
             className="block w-full text-sm text-gray-500 file:mr-3 file:px-3 file:py-2 file:rounded-xl file:border-0 file:bg-gray-900 file:text-white hover:file:bg-gray-800"
           />
-          {audioFileName && <p className="text-sm text-gray-500 truncate">Selected: {audioFileName}</p>}
+          {audioFileName && (
+            <p className="text-sm text-gray-500 truncate">
+              Selected: {audioFileName}
+            </p>
+          )}
           {audioDataUrl && (
             <audio controls className="w-full">
               <source src={audioDataUrl} type="audio/mpeg" />

@@ -28,18 +28,17 @@ This repo now includes a `vercel.json` configured for a Vite SPA build (`dist`) 
 3. Deploy.
 
 Vercel will use:
+
 - Install command: `npm install`
 - Build command: `npm run build`
 - Output directory: `dist`
-
-
-
 
 ## Create Flow
 
 - **Quick Add** is the default path for creating cards from raw text without writing JSON.
 - Choose a language, pick a segmentation mode (**Word**, **Character**, **Line**, or **Smart**), preview the generated tokens, lightly adjust them in the built-in token editor, optionally attach MP3 audio, and save.
-- The Quick Add token editor is intentionally minimal: tap a token to **edit**, **split**, **merge left/right**, or **reset to the generated result** before saving.
+- The Quick Add token editor is intentionally minimal: tap a token to **edit** text, manually add or clear an optional **reading** (ruby / pinyin), **split**, **merge left/right**, or **reset to the generated result** before saving.
+- Readings continue to use the existing `Segment = [text, reading?]` model. For safety, split operations clear readings on both resulting tokens, and merge operations clear the merged reading instead of guessing.
 - **Advanced JSON** keeps the existing power-user flow for pasting structured segment data or using the AI prompt/template.
 
 ## Data Safety
@@ -61,7 +60,6 @@ Vercel will use:
 
 - 引き継ぎ情報は `HANDOFF.md` を参照してください。
 - UI・デザイン変更時は `DESIGN_GUIDELINES.md` を必ず確認してください。
-
 
 ## Audio per Card
 
