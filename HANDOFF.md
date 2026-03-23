@@ -6,9 +6,9 @@
 - Per-card MP3 upload is still available from both creation modes.
 
 ## Latest Session Changes
-- Added `src/lib/segmentText.ts` with rule-based segmentation utilities for Word, Character, Line, and Smart modes.
-- Updated `src/components/CreateItem.tsx` to introduce the two-tab create experience, language-based mode suggestions, live token preview, and shared audio upload handling.
-- Updated `README.md` with a short explanation of Quick Add vs Advanced JSON.
+- Preserved blank lines in Quick Add Line mode by converting line tokens to `Segment[]` without dropping empty-string lines.
+- Updated Quick Add Smart mode so tapping Smart re-enables suggested mode behavior on later language changes, and aligned the helper text with that state.
+- README remains current; no content changes were required in this session.
 
 ## Verification
 - Run `npm run lint`

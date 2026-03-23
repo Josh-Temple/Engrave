@@ -14,6 +14,9 @@ export const isCJK = (char: string) => CJK_CHAR.test(char);
 
 const toSegments = (tokens: string[]): Segment[] => tokens.filter((token) => token.length > 0).map((token) => [token]);
 
+// Line mode must retain empty-string lines so formatted passages keep intentional blank rows.
+const toLineSegments = (tokens: string[]): Segment[] => tokens.map((token) => [token]);
+
 const tokenizeWordMode = (text: string): string[] => {
   const tokens: string[] = [];
   let currentWord = '';
@@ -132,7 +135,7 @@ export function segmentText(rawText: string, mode: SegmentationMode, language: Q
     case 'character':
       return toSegments(tokenizeCharacterMode(rawText));
     case 'line':
-      return toSegments(tokenizeLineMode(rawText));
+      return toLineSegments(tokenizeLineMode(rawText));
     case 'word':
     default:
       return toSegments(tokenizeWordMode(rawText));
