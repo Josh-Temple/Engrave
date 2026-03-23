@@ -9,11 +9,10 @@
 
 ## Latest Session Changes
 
-- Added a minimal Quick Add token editor that appears below Preview when generated segments exist.
-- Token editor v1 now supports single-token selection, edit text, manual reading add/edit/clear, split, merge left/right, an Edited badge, and reset-to-generated behavior.
-- Quick Add save continues to use the editable token list, now preserving optional `Segment[1]` readings when present.
-- Token chips show a subtle dot when a reading is attached, and newline tokens disable the reading input.
-- README was updated to document Quick Add reading support and its deterministic split/merge behavior.
+- Study full-recall cards now include two session-local hint stages before flip: a first-character skeleton and a deterministic light reveal.
+- Study review buttons now use three ratings: Again, Hard, and Good, while practice mode still ends with Finish Practice.
+- Store scheduling now treats Hard as a softer success path that keeps the current level, while Again and Good still move difficulty down/up respectively.
+- README was updated to document the Study hint flow and the 3-button review ratings.
 
 ## Verification
 
@@ -22,7 +21,7 @@
 
 ## Notes for the Next Session
 
-- Quick Add reading rule for this session: splitting a token clears readings on both resulting tokens; merging adjacent tokens clears the merged reading. This is intentional v1 safety behavior and should stay documented unless replaced with a smarter proven approach.
-- If users want a richer correction flow next, keep the editor lightweight and consider only small upgrades such as better newline/space editing affordances or focused reading UX polish.
-- If segmentation quality needs improvement for Japanese or Chinese, enhance `src/lib/segmentText.ts` heuristics first without changing the storage model.
-- If Create screen UX changes again, keep Quick Add mobile-first and avoid expanding the default flow into a developer-oriented editor.
+- Full-recall hint state is intentionally local to `Study.tsx`; do not persist it unless the level model is explicitly redesigned.
+- The current 3-rating review policy is intentionally minimal: Again lowers level, Hard keeps level steady with a smaller interval bump, and Good advances as before.
+- Reverse mode remains unchanged and still only applies at level 5; if recall difficulty is revisited later, evaluate the level model separately from the temporary hint UI.
+- If study UX changes again, keep the screen mobile-first and avoid adding extra controls before validating that the hint/review flow is insufficient.
