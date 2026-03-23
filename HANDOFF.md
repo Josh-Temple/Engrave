@@ -1,23 +1,20 @@
 # HANDOFF
 
 ## Current Status
-- The app now supports core PWA features: a web app manifest, an SVG-based install icon, and a registered service worker.
-- The Vercel deployment setup remains ready via `vercel.json`.
-- Settings still include backup/restore actions and audio playback preferences.
+- The Create screen now has two tabs: a default Quick Add flow for raw text entry and the existing Advanced JSON flow.
+- Quick Add uses deterministic local segmentation and saves into the existing `Segment[]` data model, so study/review behavior remains unchanged.
+- Per-card MP3 upload is still available from both creation modes.
 
 ## Latest Session Changes
-- Confirmed the app was not previously configured as a PWA because it lacked a manifest, install prompt metadata, icons, and service worker registration.
-- Adjusted the PWA asset setup to keep the PR free of binary files: removed the committed PNG icons and now reference the text-based `public/icon.svg` from the manifest and HTML metadata.
-- Added `public/sw.js` to cache the app shell and same-origin runtime assets for offline-friendly reloads.
-- Added `src/lib/registerServiceWorker.ts` and registered the service worker from `src/main.tsx`.
-- Updated `index.html` with manifest, theme color, Apple mobile web app metadata, and the production app title.
-- Updated `README.md` to document the new PWA support.
+- Added `src/lib/segmentText.ts` with rule-based segmentation utilities for Word, Character, Line, and Smart modes.
+- Updated `src/components/CreateItem.tsx` to introduce the two-tab create experience, language-based mode suggestions, live token preview, and shared audio upload handling.
+- Updated `README.md` with a short explanation of Quick Add vs Advanced JSON.
 
 ## Verification
-- `npm run lint`
-- `npm run build`
+- Run `npm run lint`
+- Run `npm run build`
 
 ## Notes for the Next Session
-- If offline behavior needs to be expanded beyond shell/runtime asset caching, review `public/sw.js` first.
-- If branding changes, update both the manifest metadata and the SVG icon together. If PNG icons are needed later, generate them in a release pipeline rather than committing binaries to the repo.
-- If a browser-based validation tool becomes available, verify the install prompt and offline reload behavior in an actual production build.
+- If users want manual token adjustment next, the safest extension is a lightweight split/merge editor layered on top of the generated `Segment[]` preview.
+- If segmentation quality needs improvement for Japanese or Chinese, enhance `src/lib/segmentText.ts` heuristics first without changing the storage model.
+- If Create screen UX changes again, keep Quick Add mobile-first and avoid expanding the default flow into a developer-oriented editor.
