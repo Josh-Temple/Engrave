@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { ArrowLeft, Check, Copy, Save } from 'lucide-react';
+import { ArrowLeft, Check, Copy, Pencil, RotateCcw, Save, Scissors } from 'lucide-react';
 import { View } from '../App';
 import { segmentText, getSuggestedMode, QuickAddLanguage, SegmentationMode } from '../lib/segmentText';
 import { useStore, Segment } from '../store/useStore';
@@ -35,6 +35,7 @@ Please convert the text provided by the user into the following JSON format.
 }`;
 
 type CreateTab = 'quick' | 'advanced';
+type TokenEditorMode = 'edit' | 'split' | null;
 
 const LANGUAGE_OPTIONS: { value: QuickAddLanguage; label: string }[] = [
   { value: 'auto', label: 'Auto' },
@@ -65,6 +66,20 @@ const formatPreviewToken = (token: string) => {
   return token;
 };
 
+const cloneSegments = (segments: Segment[]): Segment[] => segments.map(([token, reading]) => [token, reading]);
+
+const areSegmentsEqual = (left: Segment[], right: Segment[]) => {
+  if (left.length !== right.length) return false;
+  return left.every(([leftToken], index) => leftToken === right[index]?.[0]);
+};
+
+const replaceSegmentText = (segment: Segment, token: string): Segment => {
+  if (segment.length > 1) {
+    return [token, segment[1]];
+  }
+  return [token];
+};
+
 export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
   const [activeTab, setActiveTab] = useState<CreateTab>('quick');
   const [quickSource, setQuickSource] = useState('');
@@ -78,6 +93,13 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [audioDataUrl, setAudioDataUrl] = useState<string>('');
   const [audioFileName, setAudioFileName] = useState('');
+  const [editableSegments, setEditableSegments] = useState<Segment[]>([]);
+  const [hasManualTokenEdits, setHasManualTokenEdits] = useState(false);
+  const [selectedTokenIndex, setSelectedTokenIndex] = useState<number | null>(null);
+  const [tokenEditorMode, setTokenEditorMode] = useState<TokenEditorMode>(null);
+  const [tokenDraft, setTokenDraft] = useState('');
+  const [splitIndexDraft, setSplitIndexDraft] = useState(1);
+  const selectedTokenRef = useRef<HTMLButtonElement | null>(null);
   const addItem = useStore((s) => s.addItem);
 
   const previewSegments = useMemo(() => segmentText(rawText, mode, language), [rawText, mode, language]);
@@ -86,8 +108,36 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
   const modeHelperText = isSuggestedModeActive
     ? 'Automatically follows the recommended mode for the selected language.'
     : selectedModeHelp;
-  const canSaveQuick = quickSource.trim().length > 0 && rawText.trim().length > 0 && previewSegments.length > 0;
+  const hasTokenSelection = selectedTokenIndex !== null && selectedTokenIndex >= 0 && selectedTokenIndex < editableSegments.length;
+  const selectedSegment = hasTokenSelection ? editableSegments[selectedTokenIndex] : null;
+  const selectedToken = selectedSegment?.[0] ?? '';
+  const canSplitSelectedToken = Boolean(selectedSegment && selectedToken.length > 1 && selectedToken !== '\n' && selectedToken !== ' ');
+  const isEditedFromGenerated = hasManualTokenEdits && !areSegmentsEqual(editableSegments, previewSegments);
+  const finalQuickSegments = editableSegments;
+  const canSaveQuick = quickSource.trim().length > 0 && rawText.trim().length > 0 && finalQuickSegments.length > 0;
   const canSaveAdvanced = jsonInput.trim().length > 0;
+
+  useEffect(() => {
+    setEditableSegments(cloneSegments(previewSegments));
+    setHasManualTokenEdits(false);
+    setSelectedTokenIndex(null);
+    setTokenEditorMode(null);
+    setTokenDraft('');
+    setSplitIndexDraft(1);
+  }, [previewSegments]);
+
+  useEffect(() => {
+    if (hasTokenSelection) {
+      selectedTokenRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+    }
+  }, [hasTokenSelection, selectedTokenIndex]);
+
+  const markManualTokenEdit = (nextSegments: Segment[], nextSelectedIndex: number | null = selectedTokenIndex) => {
+    setEditableSegments(nextSegments);
+    setHasManualTokenEdits(true);
+    setSelectedTokenIndex(nextSelectedIndex);
+    setTokenEditorMode(null);
+  };
 
   const handleQuickSave = () => {
     setError('');
@@ -102,13 +152,12 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
       return;
     }
 
-    const segments = segmentText(rawText, mode, language);
-    if (segments.length === 0) {
+    if (finalQuickSegments.length === 0) {
       setError('Could not generate any segments from the provided text.');
       return;
     }
 
-    addItem(quickSource.trim(), segments, audioDataUrl || undefined);
+    addItem(quickSource.trim(), finalQuickSegments, audioDataUrl || undefined);
     onNavigate('home');
   };
 
@@ -197,6 +246,79 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
     setMode(value);
     setHasManualModeOverride(value !== 'smart');
     setError('');
+  };
+
+  const handleTokenSelection = (index: number) => {
+    setSelectedTokenIndex((currentIndex) => (currentIndex === index ? null : index));
+    setTokenEditorMode(null);
+    setTokenDraft('');
+    setSplitIndexDraft(1);
+  };
+
+  const handleEditStart = () => {
+    if (!selectedSegment) return;
+    setTokenDraft(selectedSegment[0]);
+    setTokenEditorMode('edit');
+  };
+
+  const handleEditApply = () => {
+    if (selectedTokenIndex === null || !selectedSegment) return;
+    const nextSegments = cloneSegments(editableSegments);
+    nextSegments[selectedTokenIndex] = replaceSegmentText(selectedSegment, tokenDraft);
+    markManualTokenEdit(nextSegments, selectedTokenIndex);
+  };
+
+  const handleSplitStart = () => {
+    if (!selectedSegment || !canSplitSelectedToken) return;
+    setSplitIndexDraft(Math.min(Math.max(1, Math.floor(selectedToken.length / 2)), selectedToken.length - 1));
+    setTokenEditorMode('split');
+  };
+
+  const handleSplitApply = () => {
+    if (selectedTokenIndex === null || !selectedSegment || !canSplitSelectedToken) return;
+    const left = selectedToken.slice(0, splitIndexDraft);
+    const right = selectedToken.slice(splitIndexDraft);
+    if (!left || !right) return;
+
+    const nextSegments = cloneSegments(editableSegments);
+    const replacement: Segment[] = [replaceSegmentText(selectedSegment, left), [right]];
+    nextSegments.splice(selectedTokenIndex, 1, ...replacement);
+    markManualTokenEdit(nextSegments, selectedTokenIndex);
+  };
+
+  const handleMerge = (direction: 'left' | 'right') => {
+    if (selectedTokenIndex === null || !selectedSegment) return;
+
+    if (direction === 'left' && selectedTokenIndex > 0) {
+      const previousSegment = editableSegments[selectedTokenIndex - 1];
+      const nextSegments = cloneSegments(editableSegments);
+      nextSegments.splice(
+        selectedTokenIndex - 1,
+        2,
+        replaceSegmentText(previousSegment, `${previousSegment[0]}${selectedSegment[0]}`),
+      );
+      markManualTokenEdit(nextSegments, selectedTokenIndex - 1);
+    }
+
+    if (direction === 'right' && selectedTokenIndex < editableSegments.length - 1) {
+      const nextSegment = editableSegments[selectedTokenIndex + 1];
+      const nextSegments = cloneSegments(editableSegments);
+      nextSegments.splice(
+        selectedTokenIndex,
+        2,
+        replaceSegmentText(selectedSegment, `${selectedSegment[0]}${nextSegment[0]}`),
+      );
+      markManualTokenEdit(nextSegments, selectedTokenIndex);
+    }
+  };
+
+  const handleResetToGenerated = () => {
+    setEditableSegments(cloneSegments(previewSegments));
+    setHasManualTokenEdits(false);
+    setSelectedTokenIndex(null);
+    setTokenEditorMode(null);
+    setTokenDraft('');
+    setSplitIndexDraft(1);
   };
 
   return (
@@ -326,6 +448,193 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
                 <p className="text-sm text-gray-500">+ {previewSegments.length - 30} more</p>
               )}
             </div>
+
+            {previewSegments.length > 0 && (
+              <div className="bg-white border border-gray-100 rounded-2xl p-4 space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Edit tokens</p>
+                    <p className="text-sm text-gray-500 mt-1">Use this only for small corrections.</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isEditedFromGenerated && (
+                      <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">Edited</span>
+                    )}
+                    {isEditedFromGenerated && (
+                      <button
+                        type="button"
+                        onClick={handleResetToGenerated}
+                        className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-gray-300 hover:text-gray-900"
+                      >
+                        <RotateCcw size={14} />
+                        Reset to generated
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2 max-h-56 overflow-y-auto pr-1">
+                  {editableSegments.map(([token], index) => {
+                    const isSelected = selectedTokenIndex === index;
+                    return (
+                      <button
+                        key={`${token}-${index}`}
+                        type="button"
+                        ref={isSelected ? selectedTokenRef : null}
+                        onClick={() => handleTokenSelection(index)}
+                        className={`rounded-xl border px-3 py-2 text-sm transition-colors ${
+                          isSelected
+                            ? 'border-gray-900 bg-gray-900 text-white'
+                            : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300 hover:bg-white'
+                        }`}
+                        aria-pressed={isSelected}
+                      >
+                        {formatPreviewToken(token)}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {selectedSegment ? (
+                  <div className="rounded-2xl border border-gray-100 bg-gray-50 p-3 space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Selected token</p>
+                        <p className="text-sm text-gray-900 mt-1">{formatPreviewToken(selectedToken)}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTokenIndex(null)}
+                        className="text-xs font-medium text-gray-500 hover:text-gray-900"
+                      >
+                        Deselect
+                      </button>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={handleEditStart}
+                        className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:border-gray-300 hover:text-gray-900"
+                      >
+                        <Pencil size={14} />
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSplitStart}
+                        disabled={!canSplitSelectedToken}
+                        className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:border-gray-300 hover:text-gray-900 disabled:cursor-not-allowed disabled:border-gray-100 disabled:text-gray-300"
+                      >
+                        <Scissors size={14} />
+                        Split
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleMerge('left')}
+                        disabled={selectedTokenIndex === 0}
+                        className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:border-gray-300 hover:text-gray-900 disabled:cursor-not-allowed disabled:border-gray-100 disabled:text-gray-300"
+                      >
+                        Merge Left
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleMerge('right')}
+                        disabled={selectedTokenIndex === editableSegments.length - 1}
+                        className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:border-gray-300 hover:text-gray-900 disabled:cursor-not-allowed disabled:border-gray-100 disabled:text-gray-300"
+                      >
+                        Merge Right
+                      </button>
+                    </div>
+
+                    {tokenEditorMode === 'edit' && (
+                      <div className="rounded-2xl border border-gray-100 bg-white p-3 space-y-3">
+                        <label className="text-xs font-bold uppercase tracking-wider text-gray-400 block">Edit token text</label>
+                        <textarea
+                          value={tokenDraft}
+                          onChange={(e) => setTokenDraft(e.target.value)}
+                          rows={2}
+                          className="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-base text-gray-900 outline-none resize-y transition-colors focus:border-gray-300 focus:bg-white"
+                        />
+                        <p className="text-xs text-gray-400">Spaces and line breaks are editable. Display shows ␠ for spaces and ↵ for newlines.</p>
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setTokenEditorMode(null)}
+                            className="rounded-full px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-900"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleEditApply}
+                            className="rounded-full bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-800"
+                          >
+                            Apply
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {tokenEditorMode === 'split' && selectedToken.length > 1 && (
+                      <div className="rounded-2xl border border-gray-100 bg-white p-3 space-y-3">
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Split token</p>
+                          <p className="text-sm text-gray-900 mt-1 break-all">{selectedToken}</p>
+                        </div>
+                        <div>
+                          <label className="text-xs font-bold uppercase tracking-wider text-gray-400 block mb-2">Split position</label>
+                          <input
+                            type="range"
+                            min={1}
+                            max={selectedToken.length - 1}
+                            step={1}
+                            value={splitIndexDraft}
+                            onChange={(e) => setSplitIndexDraft(Number(e.target.value))}
+                            className="w-full"
+                          />
+                          <input
+                            type="number"
+                            min={1}
+                            max={selectedToken.length - 1}
+                            value={splitIndexDraft}
+                            onChange={(e) => {
+                              const value = Number(e.target.value);
+                              if (Number.isNaN(value)) return;
+                              setSplitIndexDraft(Math.min(Math.max(1, value), selectedToken.length - 1));
+                            }}
+                            className="mt-3 w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-base text-gray-900 outline-none transition-colors focus:border-gray-300 focus:bg-white"
+                          />
+                        </div>
+                        <div className="rounded-xl bg-gray-50 px-3 py-2 text-sm text-gray-600 break-all">
+                          <span>{selectedToken.slice(0, splitIndexDraft) || ' '}</span>
+                          <span className="mx-2 text-gray-300">|</span>
+                          <span>{selectedToken.slice(splitIndexDraft) || ' '}</span>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setTokenEditorMode(null)}
+                            className="rounded-full px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-900"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleSplitApply}
+                            className="rounded-full bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-800"
+                          >
+                            Split token
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">Tap a token to make a small correction before saving.</p>
+                )}
+              </div>
+            )}
           </>
         ) : (
           <>
