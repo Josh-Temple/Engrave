@@ -25,7 +25,8 @@ const JSON_TEMPLATE = `{
     ["Word1", "ruby1"],
     ["Word2"],
     ["Word3", "ruby3"]
-  ]
+  ],
+  "note": "Optional memo"
 }`;
 
 const AI_PROMPT = `You are a data creation assistant for a language learning app.
@@ -36,7 +37,8 @@ Please convert the text provided by the user into the following JSON format.
 2. "segments" must be an array of arrays, where each element is in the format \`["Word", "ruby/pinyin"]\`.
 3. For words, symbols, or spaces that do not need ruby/pinyin, omit the second element like \`["Word"]\`.
 4. For languages with spaces (like English), include spaces as independent segments like \`[" "]\`.
-5. Output ONLY valid JSON. Do not include any markdown formatting, explanations, or conversational text.
+5. "note" is optional and may contain supplementary context or translation.
+6. Output ONLY valid JSON. Do not include any markdown formatting, explanations, or conversational text.
 
 [Output Example (Chinese)]
 {
@@ -45,7 +47,8 @@ Please convert the text provided by the user into the following JSON format.
     ["子", "zǐ"], ["曰", "yuē"], ["、"],
     ["学", "xué"], ["而", "ér"], ["時", "shí"], ["習", "xí"], ["之", "zhī"], ["、"],
     ["不", "bù"], ["亦", "yì"], ["説", "yuè"], ["乎", "hū"], ["。"]
-  ]
+  ],
+  "note": "Optional context or translation"
 }`;
 
 type CreateTab = "quick" | "advanced";
@@ -146,6 +149,7 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [audioDataUrl, setAudioDataUrl] = useState<string>("");
   const [audioFileName, setAudioFileName] = useState("");
+  const [memo, setMemo] = useState("");
   const [editableSegments, setEditableSegments] = useState<Segment[]>([]);
   const [hasManualTokenEdits, setHasManualTokenEdits] = useState(false);
   const [selectedTokenIndex, setSelectedTokenIndex] = useState<number | null>(
@@ -242,7 +246,12 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
       return;
     }
 
-    addItem(quickSource.trim(), finalQuickSegments, audioDataUrl || undefined);
+    addItem(
+      quickSource.trim(),
+      finalQuickSegments,
+      audioDataUrl || undefined,
+      memo.trim() || undefined,
+    );
     onNavigate("home");
   };
 
@@ -258,6 +267,9 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
       if (!Array.isArray(parsed.segments)) {
         throw new Error('Invalid JSON: "segments" must be an array.');
       }
+      if (parsed.note !== undefined && typeof parsed.note !== "string") {
+        throw new Error('Invalid JSON: "note" must be a string if provided.');
+      }
 
       for (const seg of parsed.segments) {
         if (!Array.isArray(seg) || typeof seg[0] !== "string") {
@@ -271,6 +283,7 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
         parsed.source,
         parsed.segments as Segment[],
         audioDataUrl || undefined,
+        (parsed.note ?? memo)?.trim() || undefined,
       );
       onNavigate("home");
     } catch (e: any) {
@@ -938,6 +951,18 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
             />
           </>
         )}
+
+        <div className="bg-white border border-gray-100 rounded-2xl p-4 space-y-3">
+          <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+            Memo
+          </p>
+          <textarea
+            value={memo}
+            onChange={(e) => setMemo(e.target.value)}
+            placeholder="Optional translation, interpretation, or context..."
+            className="w-full min-h-[96px] rounded-2xl border border-gray-100 bg-gray-50 p-4 text-base text-gray-900 outline-none resize-y leading-relaxed transition-colors focus:border-gray-300 focus:bg-white"
+          />
+        </div>
 
         <div className="bg-white border border-gray-100 rounded-2xl p-4 space-y-3">
           <div className="flex items-center justify-between gap-3">

@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
-import { Volume2 } from 'lucide-react';
+import { Volume2, StickyNote, X } from 'lucide-react';
 import { cn } from '../lib/utils';
 import Markdown from 'react-markdown';
 import remarkMath from 'remark-math';
@@ -16,6 +16,7 @@ interface FlashcardProps {
   onFlipChange?: (isBackVisible: boolean) => void;
   resetKey?: string;
   audioDataUrl?: string;
+  note?: string;
   autoPlayAudioOnBack?: boolean;
 }
 
@@ -30,13 +31,16 @@ export function Flashcard({
   onFlipChange,
   resetKey,
   audioDataUrl,
+  note,
   autoPlayAudioOnBack,
 }: FlashcardProps) {
   const [flipped, setFlipped] = useState(false);
+  const [isMemoOpen, setIsMemoOpen] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     setFlipped(false);
+    setIsMemoOpen(false);
     onFlipChange?.(false);
   }, [resetKey, onFlipChange]);
 
@@ -51,10 +55,14 @@ export function Flashcard({
   };
 
   const handleFlip = () => {
+    if (isMemoOpen) return;
     const nextFlipped = !flipped;
     if (!flipped && onFlip) onFlip();
     setFlipped(nextFlipped);
     onFlipChange?.(nextFlipped);
+    if (!nextFlipped) {
+      setIsMemoOpen(false);
+    }
 
     if (nextFlipped && audioDataUrl && autoPlayAudioOnBack) {
       void playAudio();
@@ -104,22 +112,74 @@ export function Flashcard({
             </div>
           </div>
 
-          {audioDataUrl && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                void playAudio();
-              }}
-              className="shrink-0 w-full h-12 rounded-xl bg-white/10 border border-white/20 text-white flex items-center justify-center gap-2 hover:bg-white/20 transition-colors"
+          {(audioDataUrl || note) && (
+            <div
+              className={cn(
+                'shrink-0',
+                audioDataUrl && note ? 'grid grid-cols-2 gap-2' : 'grid grid-cols-1'
+              )}
             >
-              <Volume2 size={18} />
-              <span className="text-sm font-medium">Play Audio</span>
-            </button>
+              {audioDataUrl && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void playAudio();
+                  }}
+                  className="w-full h-12 rounded-xl bg-white/10 border border-white/20 text-white flex items-center justify-center gap-2 hover:bg-white/20 transition-colors"
+                >
+                  <Volume2 size={18} />
+                  <span className="text-sm font-medium">Play Audio</span>
+                </button>
+              )}
+              {note && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsMemoOpen(true);
+                  }}
+                  className="w-full h-12 rounded-xl bg-white/10 border border-white/20 text-white flex items-center justify-center gap-2 hover:bg-white/20 transition-colors"
+                >
+                  <StickyNote size={18} />
+                  <span className="text-sm font-medium">Memo</span>
+                </button>
+              )}
+            </div>
           )}
           {audioDataUrl && <audio ref={audioRef} src={audioDataUrl} preload="metadata" />}
         </div>
       </motion.div>
+
+      {isMemoOpen && note && (
+        <div
+          className="absolute inset-0 z-20 flex items-end bg-black/35"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsMemoOpen(false);
+          }}
+        >
+          <div
+            className="w-full max-h-[72%] rounded-t-3xl bg-white border-t border-gray-100 p-5 flex flex-col gap-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-semibold text-gray-900">Memo</h3>
+              <button
+                type="button"
+                onClick={() => setIsMemoOpen(false)}
+                className="inline-flex items-center justify-center w-8 h-8 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                aria-label="Close memo"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="overflow-y-auto pr-1">
+              <p className="text-sm leading-relaxed text-gray-700 whitespace-pre-wrap">{note}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

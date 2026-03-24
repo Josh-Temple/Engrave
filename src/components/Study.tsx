@@ -173,6 +173,7 @@ export function Study({ onNavigate, practiceItemId }: { onNavigate: (v: View) =>
                 onFlip={() => setHasFlipped(true)}
                 resetKey={`${currentItem.id}:${hintStage}`}
                 audioDataUrl={currentItem.audioDataUrl}
+                note={currentItem.note}
                 autoPlayAudioOnBack={autoPlayAudioOnBack}
               />
             </motion.div>

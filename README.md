@@ -37,9 +37,10 @@ Vercel will use:
 
 - **Quick Add** is the default path for creating cards from raw text without writing JSON.
 - Choose a language, pick a segmentation mode (**Word**, **Character**, **Line**, or **Smart**), preview the generated tokens, lightly adjust them in the built-in token editor, optionally attach MP3 audio, and save.
+- Quick Add now also supports an optional **Memo** field for supplementary context (translation, interpretation, etc.).
 - The Quick Add token editor is intentionally minimal: tap a token to **edit** text, manually add or clear an optional **reading** (ruby / pinyin), **split**, **merge left/right**, or **reset to the generated result** before saving.
 - Readings continue to use the existing `Segment = [text, reading?]` model. For safety, split operations clear readings on both resulting tokens, and merge operations clear the merged reading instead of guessing.
-- **Advanced JSON** keeps the existing power-user flow for pasting structured segment data or using the AI prompt/template.
+- **Advanced JSON** keeps the existing power-user flow for pasting structured segment data or using the AI prompt/template, and now accepts optional `"note"` in the JSON payload.
 
 ## Data Safety
 
@@ -66,6 +67,7 @@ Vercel will use:
 - You can now attach an **MP3** audio file to each card during creation/edit.
 - Study cards now keep their content area independently scrollable, so long passages can be read fully without clipping.
 - On the study card back side, a **Play Audio** button is shown when audio exists.
+- On the study card back side, a **Memo** button is shown only when a card memo exists. Memo content opens in a lightweight bottom sheet overlay.
 - In **Settings**, you can choose between:
   - Manual playback (default)
   - Auto-play when the card back is shown
