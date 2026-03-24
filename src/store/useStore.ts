@@ -16,6 +16,7 @@ export interface MemoryItem {
   repetitions: number;
   createdAt: number;
   audioDataUrl?: string;
+  note?: string;
 }
 
 export interface AppSettings {
@@ -34,7 +35,7 @@ export interface BackupPayload {
 interface AppState {
   items: MemoryItem[];
   settings: AppSettings;
-  addItem: (source: string, segments: Segment[], audioDataUrl?: string) => void;
+  addItem: (source: string, segments: Segment[], audioDataUrl?: string, note?: string) => void;
   deleteItem: (id: string) => void;
   updateItem: (id: string, updates: Partial<MemoryItem>) => void;
   reviewItem: (id: string, rating: ReviewRating) => void;
@@ -50,6 +51,12 @@ const STORAGE_VERSION = 1;
 const defaultSettings = (): AppSettings => ({
   autoPlayAudioOnBack: false,
 });
+
+const normalizeOptionalNote = (value: unknown): string | undefined => {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
 
 const normalizeSegment = (segment: unknown): Segment | null => {
   if (!Array.isArray(segment) || typeof segment[0] !== 'string') return null;
@@ -82,6 +89,7 @@ const normalizeItem = (item: unknown): MemoryItem | null => {
     repetitions: typeof candidate.repetitions === 'number' ? candidate.repetitions : 0,
     createdAt: typeof candidate.createdAt === 'number' ? candidate.createdAt : Date.now(),
     audioDataUrl: typeof candidate.audioDataUrl === 'string' ? candidate.audioDataUrl : undefined,
+    note: normalizeOptionalNote(candidate.note),
   };
 };
 
@@ -139,7 +147,7 @@ export const useStore = create<AppState>()(
       items: [],
       settings: defaultSettings(),
 
-      addItem: (source, segments, audioDataUrl) => {
+      addItem: (source, segments, audioDataUrl, note) => {
         const newItem: MemoryItem = {
           id: crypto.randomUUID(),
           source,
@@ -151,6 +159,7 @@ export const useStore = create<AppState>()(
           repetitions: 0,
           createdAt: Date.now(),
           audioDataUrl,
+          note: normalizeOptionalNote(note),
         };
         set((state) => ({ items: [newItem, ...state.items] }));
       },
@@ -164,9 +173,13 @@ export const useStore = create<AppState>()(
       },
 
       updateItem: (id, updates) => {
+        const normalizedUpdates: Partial<MemoryItem> = {
+          ...updates,
+          note: updates.note === undefined ? undefined : normalizeOptionalNote(updates.note),
+        };
         set((state) => ({
           items: state.items.map((item) =>
-            item.id === id ? { ...item, ...updates } : item
+            item.id === id ? { ...item, ...normalizedUpdates } : item
           ),
         }));
       },

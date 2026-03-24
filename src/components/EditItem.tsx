@@ -17,7 +17,8 @@ export function EditItem({ itemId, onNavigate }: { itemId: string; onNavigate: (
     if (item) {
       setJsonInput(JSON.stringify({
         source: item.source,
-        segments: item.segments
+        segments: item.segments,
+        note: item.note
       }, null, 2));
       setAudioDataUrl(item.audioDataUrl || '');
       setAudioFileName(item.audioDataUrl ? 'Current audio' : '');
@@ -38,6 +39,9 @@ export function EditItem({ itemId, onNavigate }: { itemId: string; onNavigate: (
       if (!Array.isArray(parsed.segments)) {
         throw new Error('Invalid JSON: "segments" must be an array.');
       }
+      if (parsed.note !== undefined && typeof parsed.note !== 'string') {
+        throw new Error('Invalid JSON: "note" must be a string if provided.');
+      }
       
       // Basic validation of segments
       for (const seg of parsed.segments) {
@@ -46,7 +50,12 @@ export function EditItem({ itemId, onNavigate }: { itemId: string; onNavigate: (
         }
       }
 
-      updateItem(itemId, { source: parsed.source, segments: parsed.segments as Segment[], audioDataUrl: audioDataUrl || undefined });
+      updateItem(itemId, {
+        source: parsed.source,
+        segments: parsed.segments as Segment[],
+        note: parsed.note,
+        audioDataUrl: audioDataUrl || undefined
+      });
       onNavigate('home');
     } catch (e: any) {
       setError(e.message || 'Invalid JSON format');
