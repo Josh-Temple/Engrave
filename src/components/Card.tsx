@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { motion, useDragControls } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 import { Volume2, StickyNote, X } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -35,14 +35,52 @@ export function Flashcard({
   autoPlayAudioOnBack,
 }: FlashcardProps) {
   const [flipped, setFlipped] = useState(false);
-  const [isMemoOpen, setIsMemoOpen] = useState(false);
+  const [memoDrawerState, setMemoDrawerState] = useState<'closed' | 'peek' | 'expanded'>('closed');
+  const [drawerSizing, setDrawerSizing] = useState({ expandedHeight: 320, peekHeight: 190 });
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const dragControls = useDragControls();
+  const hasMemo = Boolean(note);
+
+  const { expandedHeight, peekHeight } = drawerSizing;
+  const isMemoOpen = memoDrawerState !== 'closed';
+
+  useEffect(() => {
+    const updateSizing = () => {
+      const cardHeight = cardRef.current?.getBoundingClientRect().height ?? 0;
+      const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 0;
+      const dynamicPeekRatio = viewportHeight >= 900 ? 0.48 : 0.42;
+      const expandedHeight = Math.max(280, Math.min(Math.round(cardHeight * 0.86), 520));
+      const peekHeight = Math.max(170, Math.min(Math.round(cardHeight * dynamicPeekRatio), 300));
+
+      setDrawerSizing({
+        expandedHeight,
+        peekHeight: Math.min(peekHeight, expandedHeight - 72),
+      });
+    };
+
+    updateSizing();
+    window.addEventListener('resize', updateSizing);
+    return () => window.removeEventListener('resize', updateSizing);
+  }, []);
+
+  const getDrawerY = () => {
+    if (memoDrawerState === 'expanded') return 0;
+    if (memoDrawerState === 'peek') return expandedHeight - peekHeight;
+    return expandedHeight + 20;
+  };
 
   useEffect(() => {
     setFlipped(false);
-    setIsMemoOpen(false);
+    setMemoDrawerState('closed');
     onFlipChange?.(false);
   }, [resetKey, onFlipChange]);
+
+  useEffect(() => {
+    if (!hasMemo) {
+      setMemoDrawerState('closed');
+    }
+  }, [hasMemo]);
 
   const playAudio = async () => {
     if (!audioRef.current) return;
@@ -61,7 +99,7 @@ export function Flashcard({
     setFlipped(nextFlipped);
     onFlipChange?.(nextFlipped);
     if (!nextFlipped) {
-      setIsMemoOpen(false);
+      setMemoDrawerState('closed');
     }
 
     if (nextFlipped && audioDataUrl && autoPlayAudioOnBack) {
@@ -70,7 +108,7 @@ export function Flashcard({
   };
 
   return (
-    <div className="relative w-full aspect-[3/4] max-w-sm mx-auto perspective-1000" onClick={handleFlip}>
+    <div ref={cardRef} className="relative w-full aspect-[3/4] max-w-sm mx-auto perspective-1000" onClick={handleFlip}>
       <motion.div
         className="w-full h-full relative preserve-3d cursor-pointer"
         initial={false}
@@ -112,11 +150,11 @@ export function Flashcard({
             </div>
           </div>
 
-          {(audioDataUrl || note) && (
+          {(audioDataUrl || hasMemo) && (
             <div
               className={cn(
                 'shrink-0',
-                audioDataUrl && note ? 'grid grid-cols-2 gap-2' : 'grid grid-cols-1'
+                audioDataUrl && hasMemo ? 'grid grid-cols-2 gap-2' : 'grid grid-cols-1'
               )}
             >
               {audioDataUrl && (
@@ -132,12 +170,12 @@ export function Flashcard({
                   <span className="text-sm font-medium">Play Audio</span>
                 </button>
               )}
-              {note && (
+              {hasMemo && (
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setIsMemoOpen(true);
+                    setMemoDrawerState((prev) => (prev === 'closed' ? 'peek' : 'closed'));
                   }}
                   className="w-full h-12 rounded-xl bg-white/10 border border-white/20 text-white flex items-center justify-center gap-2 hover:bg-white/20 transition-colors"
                 >
@@ -151,33 +189,80 @@ export function Flashcard({
         </div>
       </motion.div>
 
-      {isMemoOpen && note && (
+      {hasMemo && (
         <div
-          className="absolute inset-0 z-20 flex items-end bg-black/35"
+          className={cn(
+            'absolute inset-0 z-20 transition-colors duration-200',
+            isMemoOpen ? 'pointer-events-auto bg-black/10' : 'pointer-events-none bg-transparent'
+          )}
           onClick={(e) => {
             e.stopPropagation();
-            setIsMemoOpen(false);
+            setMemoDrawerState('closed');
           }}
         >
-          <div
-            className="w-full max-h-[72%] rounded-t-3xl bg-white border-t border-gray-100 p-5 flex flex-col gap-4"
+          <motion.div
+            drag="y"
+            dragListener={false}
+            dragControls={dragControls}
+            dragConstraints={{ top: 0, bottom: expandedHeight + 24 }}
+            dragElastic={0.08}
+            onDragEnd={(_, info) => {
+              const downward = info.offset.y > 72 || info.velocity.y > 520;
+              const upward = info.offset.y < -60 || info.velocity.y < -520;
+
+              if (memoDrawerState === 'expanded') {
+                setMemoDrawerState(downward ? 'peek' : 'expanded');
+                return;
+              }
+
+              if (memoDrawerState === 'peek') {
+                if (upward) {
+                  setMemoDrawerState('expanded');
+                  return;
+                }
+                setMemoDrawerState(downward ? 'closed' : 'peek');
+              }
+            }}
+            animate={{ y: getDrawerY() }}
+            transition={{ type: 'spring', stiffness: 420, damping: 38, mass: 0.55 }}
+            className="absolute inset-x-0 bottom-0 rounded-t-3xl bg-white border-t border-gray-100 shadow-[0_-8px_30px_rgba(0,0,0,0.15)]"
+            style={{ height: expandedHeight }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between">
+            <div
+              className="flex items-center justify-center py-2 cursor-grab active:cursor-grabbing touch-none"
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                dragControls.start(e);
+              }}
+            >
+              <div className="h-1.5 w-10 rounded-full bg-gray-300" />
+            </div>
+
+            <div className="px-5 pb-4 flex items-center justify-between">
               <h3 className="text-base font-semibold text-gray-900">Memo</h3>
               <button
                 type="button"
-                onClick={() => setIsMemoOpen(false)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMemoDrawerState('closed');
+                }}
                 className="inline-flex items-center justify-center w-8 h-8 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-900"
                 aria-label="Close memo"
               >
                 <X size={16} />
               </button>
             </div>
-            <div className="overflow-y-auto pr-1">
-              <p className="text-sm leading-relaxed text-gray-700 whitespace-pre-wrap">{note}</p>
+
+            <div
+              className={cn(
+                'px-5 pb-5 text-sm leading-relaxed text-gray-700 whitespace-pre-wrap',
+                memoDrawerState === 'expanded' ? 'overflow-y-auto overscroll-contain' : 'overflow-hidden'
+              )}
+            >
+              <p>{note}</p>
             </div>
-          </div>
+          </motion.div>
         </div>
       )}
     </div>
