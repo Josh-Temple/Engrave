@@ -283,7 +283,7 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
         parsed.source,
         parsed.segments as Segment[],
         audioDataUrl || undefined,
-        (parsed.note ?? memo)?.trim() || undefined,
+        parsed.note?.trim() || undefined,
       );
       onNavigate("home");
     } catch (e: any) {

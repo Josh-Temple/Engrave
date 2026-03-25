@@ -14,6 +14,7 @@
 - Study review buttons now use three ratings: Again, Hard, and Good, while practice mode still ends with Finish Practice.
 - Store scheduling now treats Hard as a softer success path that keeps the current level, while Again and Good still move difficulty down/up respectively.
 - Create now includes an optional Memo textarea, Advanced JSON accepts optional `"note"`, and Edit JSON includes/supports optional `"note"`.
+- Advanced JSON save now only persists memo from `parsed.note` (no fallback from Quick Add memo draft), preventing cross-tab memo leakage.
 - Study card back now shows a Memo action only when note exists, opening a bottom-sheet style overlay that prevents accidental flip while open.
 - README was updated to document memo support in create/advanced flows and study back actions.
 
