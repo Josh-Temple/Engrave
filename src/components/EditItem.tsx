@@ -12,6 +12,7 @@ export function EditItem({ itemId, onNavigate }: { itemId: string; onNavigate: (
   const [error, setError] = useState('');
   const [audioDataUrl, setAudioDataUrl] = useState<string>('');
   const [audioFileName, setAudioFileName] = useState('');
+  const [memo, setMemo] = useState('');
 
   useEffect(() => {
     if (item) {
@@ -20,6 +21,7 @@ export function EditItem({ itemId, onNavigate }: { itemId: string; onNavigate: (
         segments: item.segments,
         note: item.note
       }, null, 2));
+      setMemo(item.note || '');
       setAudioDataUrl(item.audioDataUrl || '');
       setAudioFileName(item.audioDataUrl ? 'Current audio' : '');
     }
@@ -53,7 +55,7 @@ export function EditItem({ itemId, onNavigate }: { itemId: string; onNavigate: (
       updateItem(itemId, {
         source: parsed.source,
         segments: parsed.segments as Segment[],
-        note: parsed.note,
+        note: memo.trim() || parsed.note?.trim() || undefined,
         audioDataUrl: audioDataUrl || undefined
       });
       onNavigate('home');
@@ -105,6 +107,16 @@ export function EditItem({ itemId, onNavigate }: { itemId: string; onNavigate: (
             {error}
           </div>
         )}
+
+        <div className="bg-white border border-gray-100 rounded-2xl p-4 space-y-3">
+          <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Memo (optional)</p>
+          <textarea
+            value={memo}
+            onChange={(e) => setMemo(e.target.value)}
+            placeholder="Add context, translation, or reminders."
+            className="w-full min-h-[96px] rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none resize-y focus:border-gray-400 transition-colors"
+          />
+        </div>
 
         <div className="bg-white border border-gray-100 rounded-2xl p-4 space-y-3">
           <div className="flex items-center justify-between gap-3">
