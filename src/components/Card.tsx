@@ -44,6 +44,7 @@ export function Flashcard({
 
   const { expandedHeight, peekHeight } = drawerSizing;
   const isMemoOpen = memoDrawerState !== 'closed';
+  const shouldRenderMemoDrawer = hasMemo && flipped;
 
   useEffect(() => {
     const updateSizing = () => {
@@ -81,6 +82,11 @@ export function Flashcard({
       setMemoDrawerState('closed');
     }
   }, [hasMemo]);
+
+  useEffect(() => {
+    if (!hasMemo) return;
+    setMemoDrawerState(flipped ? 'peek' : 'closed');
+  }, [flipped, hasMemo]);
 
   const playAudio = async () => {
     if (!audioRef.current) return;
@@ -189,7 +195,7 @@ export function Flashcard({
         </div>
       </motion.div>
 
-      {hasMemo && (
+      {shouldRenderMemoDrawer && (
         <div
           className={cn(
             'absolute inset-0 z-20 transition-colors duration-200',
