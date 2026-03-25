@@ -17,6 +17,7 @@
 - Advanced JSON save now only persists memo from `parsed.note` (no fallback from Quick Add memo draft), preventing cross-tab memo leakage.
 - Study card back now shows a Memo action only when note exists, opening a bottom-sheet style overlay that prevents accidental flip while open.
 - README was updated to document memo support in create/advanced flows and study back actions.
+- Edit Card now has a dedicated Memo textarea so users can update notes without touching JSON; save prioritizes textarea content and falls back to JSON `note` when textarea is empty.
 
 ## Verification
 
@@ -30,3 +31,4 @@
 - Reverse mode remains unchanged and still only applies at level 5; if recall difficulty is revisited later, evaluate the level model separately from the temporary hint UI.
 - If study UX changes again, keep the screen mobile-first and avoid adding extra controls before validating that the hint/review flow is insufficient.
 - Note normalization trims whitespace and stores empty notes as `undefined` for backward-compatible persistence.
+- Edit form memo and JSON `note` can diverge in the UI; currently the dedicated memo field is treated as the primary source during save.

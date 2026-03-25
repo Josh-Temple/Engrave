@@ -65,6 +65,7 @@ Vercel will use:
 ## Audio per Card
 
 - You can now attach an **MP3** audio file to each card during creation/edit.
+- The Edit Card screen now includes a dedicated **Memo** textarea so memo updates do not require direct JSON editing.
 - Study cards now keep their content area independently scrollable, so long passages can be read fully without clipping.
 - On the study card back side, a **Play Audio** button is shown when audio exists.
 - On the study card back side, a **Memo** button is shown only when a card memo exists. Memo content opens in a lightweight bottom sheet overlay.
