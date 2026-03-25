@@ -68,7 +68,8 @@ Vercel will use:
 - The Edit Card screen now includes a dedicated **Memo** textarea so memo updates do not require direct JSON editing.
 - Study cards now keep their content area independently scrollable, so long passages can be read fully without clipping.
 - On the study card back side, a **Play Audio** button is shown when audio exists.
-- Memo is hidden while the card front is visible. When the study card back is shown, memo content animates in from the bottom as a lightweight draggable drawer with `closed / peek / expanded` states so users can compare memo text with the passage.
+- Memo is hidden while the card front is visible. When the study card back is shown, memo content stays hidden by default and can be opened from the back-side control as a lightweight draggable drawer with `closed / peek / expanded` states.
+- Memo controls now use up/down arrow affordances (instead of note/close semantics) to better match the drawer’s actual vertical movement behavior.
 - In **Settings**, you can choose between:
   - Manual playback (default)
   - Auto-play when the card back is shown

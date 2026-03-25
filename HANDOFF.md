@@ -10,9 +10,11 @@
 
 ## Latest Session Changes
 
+- Study card memo drawer no longer auto-opens on card flip; on the back side it now starts hidden (`closed`) so rating buttons stay visible and memo is opt-in.
+- Back-side memo controls were updated from memo/close semantics to explicit vertical arrows:
+  - Card back action now uses up/down arrows with Show/Hide labels.
+  - Drawer header now uses up/down arrow buttons for expand/collapse instead of the previous `×` close affordance.
 - Memo drawer rendering is now tied to the card back side only: it never appears on the front side in either normal study or practice mode.
-- When a card flips to the back and a memo exists, the memo drawer now auto-enters `peek` with a bottom-up animation.
-- Memo close behavior was hardened so the drawer close control (`×`) reliably sets drawer state to `closed` without triggering card flip.
 - Study card memo UI was refined from a modal-like overlay to a draggable bottom drawer with 3 states (`closed`, `peek`, `expanded`).
 - Memo now opens to a readable peek height first, supports drag up/down snap transitions, and keeps more of the back passage visible for quick comparison.
 - Memo interactions now consistently stop propagation to prevent accidental card flips while preserving existing audio button behavior and action-button layout rules.

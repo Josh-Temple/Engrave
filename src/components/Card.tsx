@@ -1,6 +1,6 @@
 import { motion, useDragControls } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
-import { Volume2, StickyNote, X } from 'lucide-react';
+import { Volume2, ChevronUp, ChevronDown } from 'lucide-react';
 import { cn } from '../lib/utils';
 import Markdown from 'react-markdown';
 import remarkMath from 'remark-math';
@@ -82,11 +82,6 @@ export function Flashcard({
       setMemoDrawerState('closed');
     }
   }, [hasMemo]);
-
-  useEffect(() => {
-    if (!hasMemo) return;
-    setMemoDrawerState(flipped ? 'peek' : 'closed');
-  }, [flipped, hasMemo]);
 
   const playAudio = async () => {
     if (!audioRef.current) return;
@@ -185,8 +180,8 @@ export function Flashcard({
                   }}
                   className="w-full h-12 rounded-xl bg-white/10 border border-white/20 text-white flex items-center justify-center gap-2 hover:bg-white/20 transition-colors"
                 >
-                  <StickyNote size={18} />
-                  <span className="text-sm font-medium">Memo</span>
+                  {isMemoOpen ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
+                  <span className="text-sm font-medium">{isMemoOpen ? 'Hide Memo' : 'Show Memo'}</span>
                 </button>
               )}
             </div>
@@ -247,17 +242,30 @@ export function Flashcard({
 
             <div className="px-5 pb-4 flex items-center justify-between">
               <h3 className="text-base font-semibold text-gray-900">Memo</h3>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMemoDrawerState('closed');
-                }}
-                className="inline-flex items-center justify-center w-8 h-8 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-900"
-                aria-label="Close memo"
-              >
-                <X size={16} />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMemoDrawerState('expanded');
+                  }}
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                  aria-label="Expand memo"
+                >
+                  <ChevronUp size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMemoDrawerState((prev) => (prev === 'expanded' ? 'peek' : 'closed'));
+                  }}
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                  aria-label="Collapse memo"
+                >
+                  <ChevronDown size={16} />
+                </button>
+              </div>
             </div>
 
             <div
