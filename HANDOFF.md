@@ -10,6 +10,9 @@
 
 ## Latest Session Changes
 
+- Memo drawer rendering is now tied to the card back side only: it never appears on the front side in either normal study or practice mode.
+- When a card flips to the back and a memo exists, the memo drawer now auto-enters `peek` with a bottom-up animation.
+- Memo close behavior was hardened so the drawer close control (`×`) reliably sets drawer state to `closed` without triggering card flip.
 - Study card memo UI was refined from a modal-like overlay to a draggable bottom drawer with 3 states (`closed`, `peek`, `expanded`).
 - Memo now opens to a readable peek height first, supports drag up/down snap transitions, and keeps more of the back passage visible for quick comparison.
 - Memo interactions now consistently stop propagation to prevent accidental card flips while preserving existing audio button behavior and action-button layout rules.
