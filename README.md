@@ -87,3 +87,4 @@ Vercel will use:
 
 - Card action icons (practice / edit / delete) were moved to each card’s lower action row to avoid overlapping long titles.
 - Library cards can now be reordered manually using up/down controls, and this order is used for non-random study sessions.
+- Cards with attached audio now show a dedicated play/pause action in the Library list so audio can be previewed without opening Study mode.

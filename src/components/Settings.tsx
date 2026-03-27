@@ -81,10 +81,12 @@ export function Settings({ onNavigate }: { onNavigate: (v: View) => void }) {
               role="switch"
               aria-checked={autoPlayAudioOnBack}
               onClick={() => updateSettings({ autoPlayAudioOnBack: !autoPlayAudioOnBack })}
-              className={`relative w-14 h-8 rounded-full transition-colors ${autoPlayAudioOnBack ? 'bg-gray-900' : 'bg-gray-200'}`}
+              className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
+                autoPlayAudioOnBack ? 'bg-gray-900' : 'bg-gray-200'
+              }`}
             >
               <span
-                className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-transform ${
+                className={`inline-block h-6 w-6 rounded-full bg-white transition-transform ${
                   autoPlayAudioOnBack ? 'translate-x-7' : 'translate-x-1'
                 }`}
               />
