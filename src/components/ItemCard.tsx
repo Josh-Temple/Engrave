@@ -1,5 +1,5 @@
-import React from 'react';
-import { Pencil, Trash2, BookOpen, Volume2, ArrowUp, ArrowDown } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Pencil, Trash2, BookOpen, Volume2, ArrowUp, ArrowDown, Play, Pause } from 'lucide-react';
 import { MemoryItem } from '../store/useStore';
 import { cn } from '../lib/utils';
 
@@ -28,6 +28,46 @@ export const ItemCard: React.FC<ItemCardProps> = ({
 }) => {
   // Combine segments into a plain text preview
   const previewText = item.segments.map(seg => seg[0]).join('');
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleAudioPause = () => setIsPlaying(false);
+    const handleAudioEnded = () => {
+      setIsPlaying(false);
+      audio.currentTime = 0;
+    };
+
+    audio.addEventListener('ended', handleAudioEnded);
+    audio.addEventListener('pause', handleAudioPause);
+
+    return () => {
+      audio.removeEventListener('ended', handleAudioEnded);
+      audio.removeEventListener('pause', handleAudioPause);
+    };
+  }, []);
+
+  const handleAudioToggle = async () => {
+    if (!audioRef.current) return;
+
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+      return;
+    }
+
+    audioRef.current.currentTime = 0;
+    try {
+      await audioRef.current.play();
+      setIsPlaying(true);
+    } catch (error) {
+      console.error(error);
+      setIsPlaying(false);
+    }
+  };
 
   return (
     <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 flex flex-col gap-4 group">
@@ -82,6 +122,19 @@ export const ItemCard: React.FC<ItemCardProps> = ({
         </div>
 
         <div className="flex gap-2 ml-auto">
+          {item.audioDataUrl && (
+            <>
+              <button
+                onClick={() => void handleAudioToggle()}
+                className="w-9 h-9 rounded-full bg-gray-50 text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors inline-flex items-center justify-center"
+                title={isPlaying ? 'Pause audio' : 'Play audio'}
+                aria-label={isPlaying ? 'Pause audio' : 'Play audio'}
+              >
+                {isPlaying ? <Pause size={17} /> : <Play size={17} />}
+              </button>
+              <audio ref={audioRef} src={item.audioDataUrl} preload="metadata" />
+            </>
+          )}
           <button
             onClick={onPractice}
             className="w-9 h-9 rounded-full bg-gray-50 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors inline-flex items-center justify-center"

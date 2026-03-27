@@ -10,6 +10,8 @@
 
 ## Latest Session Changes
 
+- Library cards with attached audio now include a dedicated play/pause button in the action row, allowing direct audio preview from the card list.
+- Settings screen audio auto-play switch alignment was corrected by updating the track/thumb layout so the toggle knob remains visually centered in both states.
 - Study card memo drawer now explicitly enters from the bottom edge (`initial y = offscreen-bottom`) when opened on the back side.
 - Library card action buttons were moved from the upper-right overlay to a dedicated bottom action row to prevent title overlap.
 - Library now supports manual card ordering with per-card up/down controls.
