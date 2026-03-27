@@ -224,6 +224,7 @@ export function Flashcard({
                 setMemoDrawerState(downward ? 'closed' : 'peek');
               }
             }}
+            initial={{ y: expandedHeight + 20 }}
             animate={{ y: getDrawerY() }}
             transition={{ type: 'spring', stiffness: 420, damping: 38, mass: 0.55 }}
             className="absolute inset-x-0 bottom-0 rounded-t-3xl bg-white border-t border-gray-100 shadow-[0_-8px_30px_rgba(0,0,0,0.15)]"

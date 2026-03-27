@@ -9,6 +9,7 @@ export function Home({ onNavigate }: { onNavigate: (v: View, itemId?: string) =>
   const items = useStore((s) => s.items);
   const getDueItems = useStore((s) => s.getDueItems);
   const deleteItem = useStore((s) => s.deleteItem);
+  const moveItem = useStore((s) => s.moveItem);
 
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
@@ -46,7 +47,7 @@ export function Home({ onNavigate }: { onNavigate: (v: View, itemId?: string) =>
       </div>
 
       <div className="space-y-4 flex-1">
-        {items.map((item) => (
+        {items.map((item, index) => (
           <ItemCard
             key={item.id}
             item={item}
@@ -54,6 +55,10 @@ export function Home({ onNavigate }: { onNavigate: (v: View, itemId?: string) =>
             onEdit={() => onNavigate('edit', item.id)}
             onDelete={() => setItemToDelete(item.id)}
             onPractice={() => onNavigate('practice', item.id)}
+            onMoveUp={() => moveItem(item.id, 'up')}
+            onMoveDown={() => moveItem(item.id, 'down')}
+            canMoveUp={index > 0}
+            canMoveDown={index < items.length - 1}
           />
         ))}
 

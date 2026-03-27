@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useStore, Segment, ReviewRating } from '../store/useStore';
 import { Flashcard } from './Card';
 import { View } from '../App';
@@ -85,9 +85,22 @@ export function Study({ onNavigate, practiceItemId }: { onNavigate: (v: View) =>
   const getDueItems = useStore((s) => s.getDueItems);
   const reviewItem = useStore((s) => s.reviewItem);
   const autoPlayAudioOnBack = useStore((s) => s.settings.autoPlayAudioOnBack);
+  const reviewOrder = useStore((s) => s.settings.reviewOrder);
 
   const isPractice = !!practiceItemId;
-  const dueItems = isPractice ? [] : getDueItems();
+  const listedDueItems = isPractice ? [] : getDueItems();
+  const dueKey = listedDueItems.map((item) => item.id).join('|');
+  const dueItems = useMemo(() => {
+    if (isPractice) return [];
+    if (reviewOrder === 'listed') return listedDueItems;
+
+    const shuffled = [...listedDueItems];
+    for (let i = shuffled.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }, [dueKey, isPractice, listedDueItems, reviewOrder]);
   const practiceItem = isPractice ? items.find((i) => i.id === practiceItemId) : null;
 
   const currentItem = isPractice ? practiceItem : dueItems[0];

@@ -10,6 +10,12 @@
 
 ## Latest Session Changes
 
+- Study card memo drawer now explicitly enters from the bottom edge (`initial y = offscreen-bottom`) when opened on the back side.
+- Library card action buttons were moved from the upper-right overlay to a dedicated bottom action row to prevent title overlap.
+- Library now supports manual card ordering with per-card up/down controls.
+- Added a new setting for normal study order: `Library order` (default) or `Random`.
+- Study queue construction now honors the selected order mode (ordered due list vs shuffled due list).
+
 - Study card memo drawer no longer auto-opens on card flip; on the back side it now starts hidden (`closed`) so rating buttons stay visible and memo is opt-in.
 - Back-side memo controls were updated from memo/close semantics to explicit vertical arrows:
   - Card back action now uses up/down arrows with Show/Hide labels.
@@ -33,6 +39,10 @@
 - Run `npm run build`
 
 ## Notes for the Next Session
+
+- `settings.reviewOrder` is persisted in Zustand and normalized at hydration/import; any future settings additions should follow the same normalize pattern.
+- Random mode currently shuffles due cards client-side for each due-card set snapshot; ordered mode strictly follows the Library list order.
+- Card reordering is currently done with up/down controls; if drag-and-drop is added later, preserve the same `items` array ordering contract so study order remains predictable.
 
 - Memo drawer sizing is intentionally lightweight: it derives peek/expanded heights from card + viewport height and uses spring snapping for state transitions.
 - Drag is currently started from the drawer handle to avoid scroll/drag conflicts with long memo content in expanded mode.
