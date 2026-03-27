@@ -10,6 +10,7 @@ const formatTimestamp = (date: Date) => {
 
 export function Settings({ onNavigate }: { onNavigate: (v: View) => void }) {
   const autoPlayAudioOnBack = useStore((s) => s.settings.autoPlayAudioOnBack);
+  const reviewOrder = useStore((s) => s.settings.reviewOrder);
   const updateSettings = useStore((s) => s.updateSettings);
   const itemsCount = useStore((s) => s.items.length);
   const exportBackup = useStore((s) => s.exportBackup);
@@ -87,6 +88,35 @@ export function Settings({ onNavigate }: { onNavigate: (v: View) => void }) {
                   autoPlayAudioOnBack ? 'translate-x-7' : 'translate-x-1'
                 }`}
               />
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-[2rem] border border-gray-100 p-5 shadow-sm">
+          <p className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-2">Study Order</p>
+          <h2 className="text-lg font-medium text-gray-900">Normal mode question order</h2>
+          <p className="text-sm text-gray-500 mt-1">
+            Choose whether daily review cards follow your Library order or are shuffled randomly.
+          </p>
+
+          <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-gray-100 p-1">
+            <button
+              type="button"
+              onClick={() => updateSettings({ reviewOrder: 'listed' })}
+              className={`h-10 rounded-xl text-sm font-medium transition-colors ${
+                reviewOrder === 'listed' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Library order
+            </button>
+            <button
+              type="button"
+              onClick={() => updateSettings({ reviewOrder: 'random' })}
+              className={`h-10 rounded-xl text-sm font-medium transition-colors ${
+                reviewOrder === 'random' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Random
             </button>
           </div>
         </div>

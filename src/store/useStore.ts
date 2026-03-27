@@ -21,6 +21,7 @@ export interface MemoryItem {
 
 export interface AppSettings {
   autoPlayAudioOnBack: boolean;
+  reviewOrder: 'listed' | 'random';
 }
 
 export interface BackupPayload {
@@ -39,6 +40,7 @@ interface AppState {
   deleteItem: (id: string) => void;
   updateItem: (id: string, updates: Partial<MemoryItem>) => void;
   reviewItem: (id: string, rating: ReviewRating) => void;
+  moveItem: (id: string, direction: 'up' | 'down') => void;
   getDueItems: () => MemoryItem[];
   updateSettings: (updates: Partial<AppSettings>) => void;
   exportBackup: () => BackupPayload;
@@ -50,6 +52,7 @@ const STORAGE_VERSION = 1;
 
 const defaultSettings = (): AppSettings => ({
   autoPlayAudioOnBack: false,
+  reviewOrder: 'listed',
 });
 
 const normalizeOptionalNote = (value: unknown): string | undefined => {
@@ -104,6 +107,10 @@ const normalizeSettings = (settings: unknown): AppSettings => {
       typeof candidate.autoPlayAudioOnBack === 'boolean'
         ? candidate.autoPlayAudioOnBack
         : defaultSettings().autoPlayAudioOnBack,
+    reviewOrder:
+      candidate.reviewOrder === 'random'
+        ? 'random'
+        : defaultSettings().reviewOrder,
   };
 };
 
@@ -170,6 +177,22 @@ export const useStore = create<AppState>()(
 
       deleteItem: (id) => {
         set((state) => ({ items: state.items.filter((i) => i.id !== id) }));
+      },
+
+      moveItem: (id, direction) => {
+        set((state) => {
+          const currentIndex = state.items.findIndex((item) => item.id === id);
+          if (currentIndex === -1) return state;
+
+          const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+          if (targetIndex < 0 || targetIndex >= state.items.length) return state;
+
+          const reorderedItems = [...state.items];
+          const [movedItem] = reorderedItems.splice(currentIndex, 1);
+          reorderedItems.splice(targetIndex, 0, movedItem);
+
+          return { items: reorderedItems };
+        });
       },
 
       updateItem: (id, updates) => {

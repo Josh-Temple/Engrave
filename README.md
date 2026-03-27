@@ -81,3 +81,9 @@ Vercel will use:
 - Lower study levels still use deterministic cloze blanks, while full-recall cards now offer two optional pre-flip hints: a first-character skeleton and a light token reveal.
 - Full-recall hints are session-local UI only; the persisted `level` model remains 0-5 with reverse mode still at level 5.
 - Review now uses three ratings after flip: **Again**, **Hard**, and **Good**. Hard keeps the current prompt difficulty while applying a smaller interval increase than Good.
+- In **Settings**, normal study order can now be switched between **Library order** and **Random**.
+
+## Library Improvements
+
+- Card action icons (practice / edit / delete) were moved to each card’s lower action row to avoid overlapping long titles.
+- Library cards can now be reordered manually using up/down controls, and this order is used for non-random study sessions.

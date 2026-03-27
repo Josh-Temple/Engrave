@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pencil, Trash2, BookOpen, Volume2 } from 'lucide-react';
+import { Pencil, Trash2, BookOpen, Volume2, ArrowUp, ArrowDown } from 'lucide-react';
 import { MemoryItem } from '../store/useStore';
 import { cn } from '../lib/utils';
 
@@ -9,37 +9,29 @@ interface ItemCardProps {
   onEdit: () => void;
   onDelete: () => void;
   onPractice: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
 }
 
-export const ItemCard: React.FC<ItemCardProps> = ({ item, isDue, onEdit, onDelete, onPractice }) => {
+export const ItemCard: React.FC<ItemCardProps> = ({
+  item,
+  isDue,
+  onEdit,
+  onDelete,
+  onPractice,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp,
+  canMoveDown,
+}) => {
   // Combine segments into a plain text preview
   const previewText = item.segments.map(seg => seg[0]).join('');
 
   return (
-    <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 flex flex-col gap-4 relative group">
-      <div className="absolute top-6 right-6 flex gap-3">
-        <button 
-          onClick={onPractice}
-          className="text-gray-300 hover:text-indigo-600 transition-colors"
-          title="Practice Mode"
-        >
-          <BookOpen size={20} />
-        </button>
-        <button 
-          onClick={onEdit}
-          className="text-gray-300 hover:text-gray-900 transition-colors"
-        >
-          <Pencil size={20} />
-        </button>
-        <button 
-          onClick={onDelete}
-          className="text-gray-300 hover:text-red-500 transition-colors"
-        >
-          <Trash2 size={20} />
-        </button>
-      </div>
-
-      <div className="pr-16">
+    <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 flex flex-col gap-4 group">
+      <div>
         <h2 className="text-lg font-medium text-gray-900 truncate">{item.source}</h2>
         <p className="text-sm text-gray-400 truncate mt-1">{previewText}</p>
         {item.audioDataUrl && (
@@ -65,6 +57,54 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, isDue, onEdit, onDelet
         {isDue && (
           <span className="ml-auto w-2 h-2 rounded-full bg-red-500" />
         )}
+      </div>
+
+      <div className="pt-1 border-t border-gray-100 flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onMoveUp}
+            disabled={!canMoveUp}
+            className="w-9 h-9 rounded-full bg-gray-50 text-gray-400 hover:text-gray-900 hover:bg-gray-100 disabled:opacity-35 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center"
+            title="Move card up"
+            aria-label="Move card up"
+          >
+            <ArrowUp size={16} />
+          </button>
+          <button
+            onClick={onMoveDown}
+            disabled={!canMoveDown}
+            className="w-9 h-9 rounded-full bg-gray-50 text-gray-400 hover:text-gray-900 hover:bg-gray-100 disabled:opacity-35 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center"
+            title="Move card down"
+            aria-label="Move card down"
+          >
+            <ArrowDown size={16} />
+          </button>
+        </div>
+
+        <div className="flex gap-2 ml-auto">
+          <button
+            onClick={onPractice}
+            className="w-9 h-9 rounded-full bg-gray-50 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors inline-flex items-center justify-center"
+            title="Practice Mode"
+            aria-label="Open practice mode"
+          >
+            <BookOpen size={17} />
+          </button>
+          <button
+            onClick={onEdit}
+            className="w-9 h-9 rounded-full bg-gray-50 text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors inline-flex items-center justify-center"
+            aria-label="Edit card"
+          >
+            <Pencil size={17} />
+          </button>
+          <button
+            onClick={onDelete}
+            className="w-9 h-9 rounded-full bg-gray-50 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors inline-flex items-center justify-center"
+            aria-label="Delete card"
+          >
+            <Trash2 size={17} />
+          </button>
+        </div>
       </div>
     </div>
   );
