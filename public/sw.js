@@ -1,5 +1,5 @@
-const APP_SHELL_CACHE = 'engrave-app-shell-v2';
-const RUNTIME_CACHE = 'engrave-runtime-v2';
+const APP_SHELL_CACHE = 'engrave-app-shell-v3';
+const RUNTIME_CACHE = 'engrave-runtime-v3';
 const APP_SHELL_URLS = [
   '/',
   '/manifest.webmanifest',
@@ -37,6 +37,16 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  const destination = request.destination;
+  const isCodeAsset = destination === 'script' || destination === 'style' || destination === 'worker';
+
+  if (isCodeAsset) {
+    event.respondWith(
+      fetch(request).catch(() => caches.match(request)),
+    );
     return;
   }
 
