@@ -151,6 +151,8 @@ with check (bucket_id = 'card-audio');
 - Full-recall hints are session-local UI only; the persisted `level` model remains 0-5 with reverse mode still at level 5.
 - Review now uses three ratings after flip: **Again**, **Hard**, and **Good**. Hard keeps the current prompt difficulty while applying a smaller interval increase than Good.
 - In **Settings**, normal study order can now be switched between **Library order** and **Random**.
+- In **Practice Mode**, the back side now shows a copy icon at the top-right; tapping it copies `source + plain body text` (without ruby/furigana readings) to the clipboard.
+- Random study order behavior on the back side now keeps the current card stable so rating buttons can be used correctly after flip.
 
 ## Library Improvements
 

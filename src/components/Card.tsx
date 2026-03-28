@@ -1,6 +1,6 @@
 import { motion, useDragControls } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
-import { Volume2, ChevronUp, ChevronDown } from 'lucide-react';
+import { Volume2, ChevronUp, ChevronDown, Copy } from 'lucide-react';
 import { cn } from '../lib/utils';
 import Markdown from 'react-markdown';
 import remarkMath from 'remark-math';
@@ -18,6 +18,8 @@ interface FlashcardProps {
   audioDataUrl?: string;
   note?: string;
   autoPlayAudioOnBack?: boolean;
+  onCopyBackText?: () => void;
+  showBackCopyButton?: boolean;
 }
 
 const markdownClassName =
@@ -43,6 +45,8 @@ export function Flashcard({
   audioDataUrl,
   note,
   autoPlayAudioOnBack,
+  onCopyBackText,
+  showBackCopyButton = false,
 }: FlashcardProps) {
   const [flipped, setFlipped] = useState(false);
   const [memoDrawerState, setMemoDrawerState] = useState<'closed' | 'peek' | 'expanded'>('closed');
@@ -146,6 +150,19 @@ export function Flashcard({
             'flex flex-col p-8 gap-4 rotate-y-180'
           )}
         >
+          {showBackCopyButton && onCopyBackText && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onCopyBackText();
+              }}
+              className="absolute top-4 right-4 z-10 inline-flex items-center justify-center w-9 h-9 rounded-full bg-white/10 border border-white/20 text-white hover:bg-white/20 transition-colors"
+              aria-label="Copy source and text"
+            >
+              <Copy size={16} />
+            </button>
+          )}
           <span className="shrink-0 text-xs font-bold tracking-wider text-gray-500 uppercase">{header}</span>
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1">
             <div className="min-h-full flex items-center">
