@@ -120,6 +120,7 @@ with check (bucket_id = 'card-audio');
 - If you see an error mentioning `row-level security policy`, it usually means the upload policy above is missing or too strict.
 - Confirm Vercel environment variables are set (`VITE_AUDIO_STORAGE_MODE`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`).
 - Confirm you redeployed after changing environment variables in Vercel.
+- If you still see stale module-resolution errors after deploying or switching storage mode, hard refresh and (for installed PWA users) unregister the old service worker once, then reload.
 
 #### Setup Ownership (Who does what)
 
