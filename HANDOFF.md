@@ -114,3 +114,10 @@
   - changed JS/CSS/worker code asset handling to network-first (with cache fallback) instead of cache-first
   - kept lightweight offline behavior for non-code same-origin GET assets
 - Updated README PWA notes with the new cache behavior and a one-time user recovery step (clear old service worker/site data if stale modules were previously cached).
+
+## Session Update (2026-03-28, Security Hardening + Refactor)
+
+- Added `src/lib/textSafety.ts` to centralize text normalization/sanitization helpers used across persistence and rendering paths.
+- Hardened store writes/reads (`addItem`, `updateItem`, backup import, hydration) to normalize source/note fields and reject invalid segment payloads before persistence.
+- Mitigated ruby-markup XSS risk in study rendering by escaping segment text/reading values before composing `<ruby><rt>` HTML strings consumed by markdown.
+- Refactored duplicated Flashcard markdown rendering into a small shared `CardMarkdown` helper component for maintainability.

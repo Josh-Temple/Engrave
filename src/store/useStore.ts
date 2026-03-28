@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { addDays, isBefore, startOfDay } from 'date-fns';
+import { normalizeOptionalText, normalizeText, sanitizeSegments } from '../lib/textSafety';
 
 export type Segment = [string, string?]; // [text, ruby/pinyin]
 export type ReviewRating = 'again' | 'hard' | 'good';
@@ -56,35 +57,20 @@ const defaultSettings = (): AppSettings => ({
   reviewOrder: 'listed',
 });
 
-const normalizeOptionalNote = (value: unknown): string | undefined => {
-  if (typeof value !== 'string') return undefined;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-};
-
-const normalizeSegment = (segment: unknown): Segment | null => {
-  if (!Array.isArray(segment) || typeof segment[0] !== 'string') return null;
-  if (segment.length > 1 && typeof segment[1] !== 'string') return null;
-  return [segment[0], typeof segment[1] === 'string' ? segment[1] : undefined];
-};
-
 const normalizeItem = (item: unknown): MemoryItem | null => {
   if (!item || typeof item !== 'object') return null;
 
   const candidate = item as Record<string, unknown>;
   if (typeof candidate.id !== 'string') return null;
-  if (typeof candidate.source !== 'string') return null;
-  if (!Array.isArray(candidate.segments)) return null;
+  const normalizedSource = normalizeText(candidate.source);
+  if (!normalizedSource) return null;
 
-  const segments = candidate.segments
-    .map((segment) => normalizeSegment(segment))
-    .filter((segment): segment is Segment => segment !== null);
-
-  if (segments.length !== candidate.segments.length) return null;
+  const segments = sanitizeSegments(candidate.segments);
+  if (!segments) return null;
 
   return {
     id: candidate.id,
-    source: candidate.source,
+    source: normalizedSource,
     segments,
     level: typeof candidate.level === 'number' ? candidate.level : 0,
     nextReviewDate: typeof candidate.nextReviewDate === 'number' ? candidate.nextReviewDate : Date.now(),
@@ -99,7 +85,7 @@ const normalizeItem = (item: unknown): MemoryItem | null => {
           ? candidate.audioDataUrl
           : undefined,
     audioDataUrl: typeof candidate.audioDataUrl === 'string' ? candidate.audioDataUrl : undefined,
-    note: normalizeOptionalNote(candidate.note),
+    note: normalizeOptionalText(candidate.note),
   };
 };
 
@@ -162,10 +148,16 @@ export const useStore = create<AppState>()(
       settings: defaultSettings(),
 
       addItem: (source, segments, audioUrl, note) => {
+        const normalizedSource = normalizeText(source);
+        const normalizedSegments = sanitizeSegments(segments);
+        if (!normalizedSource || !normalizedSegments || normalizedSegments.length === 0) {
+          throw new Error('Item data is invalid.');
+        }
+
         const newItem: MemoryItem = {
           id: crypto.randomUUID(),
-          source,
-          segments,
+          source: normalizedSource,
+          segments: normalizedSegments,
           level: 0,
           nextReviewDate: Date.now(),
           interval: 0,
@@ -174,7 +166,7 @@ export const useStore = create<AppState>()(
           createdAt: Date.now(),
           audioUrl,
           audioDataUrl: audioUrl,
-          note: normalizeOptionalNote(note),
+          note: normalizeOptionalText(note),
         };
         set((state) => ({ items: [newItem, ...state.items] }));
       },
@@ -204,10 +196,29 @@ export const useStore = create<AppState>()(
       },
 
       updateItem: (id, updates) => {
-        const normalizedUpdates: Partial<MemoryItem> = {
-          ...updates,
-          note: updates.note === undefined ? undefined : normalizeOptionalNote(updates.note),
-        };
+        const normalizedSegments =
+          updates.segments === undefined ? undefined : sanitizeSegments(updates.segments);
+        if (updates.segments !== undefined && !normalizedSegments) {
+          throw new Error('Item segments are invalid.');
+        }
+
+        const normalizedSource =
+          updates.source === undefined ? undefined : normalizeText(updates.source);
+        if (updates.source !== undefined && !normalizedSource) {
+          throw new Error('Item source is invalid.');
+        }
+
+        const normalizedUpdates: Partial<MemoryItem> = { ...updates };
+        if (updates.source !== undefined) {
+          normalizedUpdates.source = normalizedSource;
+        }
+        if (updates.segments !== undefined) {
+          normalizedUpdates.segments = normalizedSegments;
+        }
+        if (updates.note !== undefined) {
+          normalizedUpdates.note = normalizeOptionalText(updates.note);
+        }
+
         set((state) => ({
           items: state.items.map((item) =>
             item.id === id ? { ...item, ...normalizedUpdates } : item

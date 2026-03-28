@@ -23,6 +23,16 @@ interface FlashcardProps {
 const markdownClassName =
   'text-xl font-medium leading-relaxed text-left w-full whitespace-pre-wrap [&_rt]:text-gray-400 [&_rt]:font-normal [&_rt]:text-[0.6em] [&>p]:mb-4 last:[&>p]:mb-0';
 
+function CardMarkdown({ text, className }: { text: string; className: string }) {
+  return (
+    <div className={cn(markdownClassName, className)}>
+      <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex, rehypeRaw]}>
+        {text}
+      </Markdown>
+    </div>
+  );
+}
+
 export function Flashcard({
   header,
   frontText,
@@ -125,11 +135,7 @@ export function Flashcard({
           <span className="shrink-0 text-xs font-bold tracking-wider text-gray-400 uppercase">{header}</span>
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1">
             <div className="min-h-full flex items-center">
-              <div className={cn(markdownClassName, 'text-gray-900')}>
-                <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex, rehypeRaw]}>
-                  {frontText}
-                </Markdown>
-              </div>
+              <CardMarkdown text={frontText} className="text-gray-900" />
             </div>
           </div>
         </div>
@@ -143,11 +149,7 @@ export function Flashcard({
           <span className="shrink-0 text-xs font-bold tracking-wider text-gray-500 uppercase">{header}</span>
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1">
             <div className="min-h-full flex items-center">
-              <div className={cn(markdownClassName, 'text-white')}>
-                <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex, rehypeRaw]}>
-                  {backText}
-                </Markdown>
-              </div>
+              <CardMarkdown text={backText} className="text-white" />
             </div>
           </div>
 
