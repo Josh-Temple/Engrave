@@ -14,9 +14,15 @@ View your app in AI Studio: https://ai.studio/apps/86ce453c-2675-426a-b05a-039e7
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in `.env.local` to your Gemini API key
-3. Run the app:
+2. Set the `GEMINI_API_KEY` in `.env.local` to your Gemini API key.
+3. (Optional, audio only) Configure Supabase audio storage in `.env.local`:
+   - `VITE_AUDIO_STORAGE_MODE=supabase`
+   - `VITE_SUPABASE_URL=...`
+   - `VITE_SUPABASE_ANON_KEY=...`
+4. Run the app:
    `npm run dev`
+
+> Note: Supabase integration is audio-file storage only. Card content and review data remain local-first in browser storage.
 
 ## Deploy to Vercel
 
@@ -25,7 +31,11 @@ This repo now includes a `vercel.json` configured for a Vite SPA build (`dist`) 
 1. Import this repository in Vercel.
 2. In **Project Settings → Environment Variables**, add:
    - `GEMINI_API_KEY` (for production, and preview/development if needed)
-3. Deploy.
+   - `VITE_AUDIO_STORAGE_MODE` (`local` or `supabase`)
+   - `VITE_SUPABASE_URL` (required when `VITE_AUDIO_STORAGE_MODE=supabase`)
+   - `VITE_SUPABASE_ANON_KEY` (required when `VITE_AUDIO_STORAGE_MODE=supabase`)
+3. If using Supabase audio mode, create a Storage bucket named `card-audio` and set it to **public**.
+4. Deploy (or redeploy after any environment variable change).
 
 Vercel will use:
 
@@ -88,6 +98,13 @@ Vercel will use:
 - Create a **public** Supabase Storage bucket named `card-audio` before uploading.
 - In Supabase mode, uploaded MP3 files are stored in `card-audio` and `audioUrl` is saved as a public URL.
 - This integration affects **audio file storage only**. Card content, review history, and other app data remain local-first in browser storage.
+
+#### Troubleshooting Supabase Audio Uploads
+
+- If uploads fail, confirm the `card-audio` bucket exists in your Supabase project.
+- Confirm the `card-audio` bucket is set to **public**.
+- Confirm Vercel environment variables are set (`VITE_AUDIO_STORAGE_MODE`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`).
+- Confirm you redeployed after changing environment variables in Vercel.
 
 ## Study Flow
 

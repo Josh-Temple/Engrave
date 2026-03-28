@@ -29,6 +29,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
   // Combine segments into a plain text preview
   const previewText = item.segments.map(seg => seg[0]).join('');
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioSrc = item.audioUrl || item.audioDataUrl;
   const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
@@ -122,7 +123,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
         </div>
 
         <div className="flex gap-2 ml-auto">
-          {item.audioDataUrl && (
+          {audioSrc && (
             <>
               <button
                 onClick={() => void handleAudioToggle()}
@@ -132,7 +133,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
               >
                 {isPlaying ? <Pause size={17} /> : <Play size={17} />}
               </button>
-              <audio ref={audioRef} src={item.audioDataUrl} preload="metadata" />
+              <audio ref={audioRef} src={audioSrc} preload="metadata" />
             </>
           )}
           <button
