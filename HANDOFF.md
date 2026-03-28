@@ -99,3 +99,11 @@
 - Expanded README with a new **Setup Ownership (Who does what)** section to clearly separate dashboard tasks (user-side) from behavior already implemented in app code.
 - Added a short **Quick Verification Steps** checklist to validate bucket visibility, policy setup, env vars, and upload behavior in order.
 - No runtime code changes; docs-only clarification update.
+
+## Session Update (2026-03-28, Production Module Resolution / SW Cache Hardening)
+
+- Hardened `public/sw.js` runtime caching strategy:
+  - bumped cache versions to invalidate old runtime entries
+  - changed JS/CSS/worker code asset handling to network-first (with cache fallback) instead of cache-first
+  - kept lightweight offline behavior for non-code same-origin GET assets
+- Updated README PWA notes with the new cache behavior and a one-time user recovery step (clear old service worker/site data if stale modules were previously cached).

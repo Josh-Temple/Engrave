@@ -66,6 +66,8 @@ Vercel will use:
 - Engrave now includes a web app manifest, an SVG-based install icon, and a registered service worker for offline-friendly caching.
 - On supported browsers, you can install it to your home screen / desktop and reopen the app in a standalone window.
 - The offline experience caches the app shell and previously requested same-origin assets. To keep the PR text-only, the current icon setup uses SVG assets instead of committed PNG binaries.
+- Service worker runtime caching intentionally avoids JavaScript/CSS/worker code assets and fetches them network-first to reduce stale-build/module mismatch issues after deployments.
+- If you installed an older PWA build and see module-load errors after deploy, clear site storage / unregister the service worker once, then reload.
 
 ## Handoff
 
