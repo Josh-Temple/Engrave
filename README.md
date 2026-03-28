@@ -75,7 +75,7 @@ Vercel will use:
 ## Audio per Card
 
 - You can now attach an **MP3** audio file to each card during creation/edit.
-- Audio uploads now include a size guard for local-storage safety (current threshold: **700KB** per file). If exceeded, the UI shows guidance instead of attempting a save that is likely to hit browser storage quota.
+- In **local audio mode**, uploads include a size guard for browser-storage safety (current threshold: **700KB** per file). If exceeded, the UI shows guidance instead of attempting a save that is likely to hit browser storage quota.
 - Audio processing now goes through `src/lib/audioStorage.ts`, which centralizes provider selection (`VITE_AUDIO_STORAGE_MODE`) so future migration from local Data URL storage to Supabase Storage can be implemented in one place.
 - The data model now keeps an `audioUrl` field (while preserving `audioDataUrl` compatibility) to simplify a later switch to remote URL-based storage.
 - The Edit Card screen now includes a dedicated **Memo** textarea so memo updates do not require direct JSON editing.
@@ -87,24 +87,39 @@ Vercel will use:
   - Manual playback (default)
   - Auto-play when the card back is shown
 
-> Note: Audio files are stored in local browser storage as Data URLs. Very large files may exceed storage limits.
+> Note: The **700KB** guard applies only to `VITE_AUDIO_STORAGE_MODE=local`. In `supabase` mode, files are uploaded to Supabase Storage instead of being stored as Data URLs in browser local storage.
 
 ### Supabase Storage (Audio Only)
 
 - You can switch audio storage to Supabase by setting `VITE_AUDIO_STORAGE_MODE=supabase`.
+- Storage mode selection is environment-based (build/deploy config), not an in-app Settings toggle.
 - Required environment variables:
   - `VITE_SUPABASE_URL`
   - `VITE_SUPABASE_ANON_KEY`
 - Create a **public** Supabase Storage bucket named `card-audio` before uploading.
 - In Supabase mode, uploaded MP3 files are stored in `card-audio` and `audioUrl` is saved as a public URL.
 - This integration affects **audio file storage only**. Card content, review history, and other app data remain local-first in browser storage.
+- Supabase mode currently does **not** enforce the 700KB local-storage guard in app code.
 
 #### Troubleshooting Supabase Audio Uploads
 
+- If you see `Audio file is too large for reliable local storage...`, the app is currently running in `local` mode. Re-check `VITE_AUDIO_STORAGE_MODE=supabase` in the active runtime environment and restart/redeploy.
 - If uploads fail, confirm the `card-audio` bucket exists in your Supabase project.
 - Confirm the `card-audio` bucket is set to **public**.
 - Confirm Vercel environment variables are set (`VITE_AUDIO_STORAGE_MODE`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`).
 - Confirm you redeployed after changing environment variables in Vercel.
+
+#### Root-Cause Checklist (Local vs Supabase)
+
+Use this order to identify where the issue is:
+
+1. **App mode check**: confirm runtime env is `VITE_AUDIO_STORAGE_MODE=supabase`.
+2. **Build/runtime refresh**: after any env change, restart local dev server or redeploy Vercel.
+3. **Bucket check**: verify `card-audio` exists and is public.
+4. **Policy check**: verify `storage.objects` has INSERT policies for `anon` / `authenticated` on `bucket_id = 'card-audio'`.
+5. **Request check**: inspect browser Network tab during upload.
+   - If no Supabase Storage request appears, app is still effectively in local mode.
+   - If request appears but fails (401/403/400), Supabase config/policy is the likely issue.
 
 ## Study Flow
 

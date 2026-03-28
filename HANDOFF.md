@@ -77,3 +77,33 @@
 - No architecture or runtime behavior changes; this session is docs/setup polish only.
 - Small runtime-safe polish: `src/lib/supabase.ts` now lazy-loads the Supabase SDK at call time and caches the client, preserving local mode behavior in environments where the SDK is unavailable until explicitly needed.
 - Small UI fix: `ItemCard` now consistently uses `audioUrl || audioDataUrl` for MP3 indicator and preview playback, fixing a missing-variable TypeScript error and supporting both legacy/new audio fields.
+
+## Session Update (2026-03-28, Supabase Audio Final Verification)
+
+- Re-verified repository integration for audio-only Supabase Storage mode without expanding scope to Auth/DB/sync features.
+- Confirmed `@supabase/supabase-js` is present in dependencies and `src/lib/supabase.ts` initializes from `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`.
+- Confirmed `src/lib/audioStorage.ts` switches behavior via `VITE_AUDIO_STORAGE_MODE`, uploading MP3 files to the `card-audio` bucket in Supabase mode and returning a public URL.
+- Confirmed local mode (`VITE_AUDIO_STORAGE_MODE=local`) remains available and unchanged.
+- Validation commands completed successfully: `npm run lint` and `npm run build`.
+- No Supabase SQL, bucket strategy, Auth, signed URL, or sync architecture changes were made.
+
+## Session Update (2026-03-28, Audio Size Limit Clarification)
+
+- Clarified documentation that the 700KB upload guard applies only to `VITE_AUDIO_STORAGE_MODE=local`.
+- Documented that Supabase mode uploads to Storage and does not enforce the 700KB local-storage cap in app code.
+- No runtime logic changes were made in this session.
+
+## Session Update (2026-03-28, Storage Mode UX Clarification)
+
+- Clarified in README that audio storage mode (`local` / `supabase`) is selected via environment variables, not via an in-app Settings screen toggle.
+- Confirmed current Settings UI includes playback and review-order controls, but no storage-provider switch.
+
+## Session Update (2026-03-28, Local-Mode Error Clarification)
+
+- Added README troubleshooting note for the exact error: `Audio file is too large for reliable local storage...`.
+- Clarified this error means the app is running in `local` audio mode (not `supabase` mode), usually due to env mismatch or missing restart/redeploy after env changes.
+
+## Session Update (2026-03-28, Root-Cause Triage Guidance)
+
+- Added a README root-cause checklist to separate app-side mode issues from Supabase-side bucket/policy issues.
+- Checklist now recommends ordered verification: runtime mode, restart/redeploy after env changes, bucket visibility, storage INSERT policies, and browser Network request inspection.
