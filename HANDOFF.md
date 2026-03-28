@@ -54,3 +54,12 @@
 - If study UX changes again, keep the screen mobile-first and avoid adding extra controls before validating that the hint/review flow is insufficient.
 - Note normalization trims whitespace and stores empty notes as `undefined` for backward-compatible persistence.
 - Edit form memo and JSON `note` can diverge in the UI; currently the dedicated memo field is treated as the primary source during save.
+
+## Session Update (2026-03-28, Supabase Audio Storage)
+
+- Implemented Supabase Storage support for audio upload flow only.
+- Added `src/lib/supabase.ts` with browser client initialization from `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+- Replaced `prepareSupabaseAudio()` stub in `src/lib/audioStorage.ts` with real upload + public URL retrieval from bucket `card-audio`.
+- Kept local audio mode behavior unchanged (`VITE_AUDIO_STORAGE_MODE=local`).
+- Updated README with env vars and setup notes for `VITE_AUDIO_STORAGE_MODE=supabase` and public bucket requirements.
+- No Auth, DB schema, Edge Functions, or sync features were added in this session.

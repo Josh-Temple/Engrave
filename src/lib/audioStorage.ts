@@ -1,6 +1,7 @@
 export type AudioStorageMode = 'local' | 'supabase';
 
 export const LOCAL_MAX_AUDIO_FILE_SIZE_BYTES = 700 * 1024;
+const SUPABASE_AUDIO_BUCKET = 'card-audio';
 
 const getAudioStorageMode = (): AudioStorageMode => {
   const mode = import.meta.env.VITE_AUDIO_STORAGE_MODE;
@@ -30,11 +31,46 @@ const prepareLocalAudio = async (file: File): Promise<string> => {
   return readFileAsDataUrl(file);
 };
 
-const prepareSupabaseAudio = async (_file: File): Promise<string> => {
-  // Migration stub: swap this implementation with Supabase Storage upload.
-  throw new Error(
-    'Supabase audio storage is not configured yet. Set VITE_AUDIO_STORAGE_MODE=local or implement src/lib/audioStorage.ts prepareSupabaseAudio.',
-  );
+const sanitizeFileName = (name: string): string =>
+  name
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+
+const buildAudioPath = (file: File): string => {
+  const baseName = sanitizeFileName(file.name.replace(/\.mp3$/i, '')) || 'audio';
+  const uniqueId =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+  return `cards/${baseName}-${uniqueId}.mp3`;
+};
+
+const prepareSupabaseAudio = async (file: File): Promise<string> => {
+  const { supabase } = await import('./supabase');
+  const path = buildAudioPath(file);
+
+  const { error: uploadError } = await supabase.storage
+    .from(SUPABASE_AUDIO_BUCKET)
+    .upload(path, file, {
+      cacheControl: '3600',
+      contentType: file.type || 'audio/mpeg',
+      upsert: false,
+    });
+
+  if (uploadError) {
+    throw new Error(`Failed to upload audio to Supabase: ${uploadError.message}`);
+  }
+
+  const { data } = supabase.storage.from(SUPABASE_AUDIO_BUCKET).getPublicUrl(path);
+
+  if (!data?.publicUrl) {
+    throw new Error('Failed to retrieve a public URL for the uploaded audio.');
+  }
+
+  return data.publicUrl;
 };
 
 export const prepareAudioForStorage = async (file: File): Promise<string> => {

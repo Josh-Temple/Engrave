@@ -79,6 +79,16 @@ Vercel will use:
 
 > Note: Audio files are stored in local browser storage as Data URLs. Very large files may exceed storage limits.
 
+### Supabase Storage (Audio Only)
+
+- You can switch audio storage to Supabase by setting `VITE_AUDIO_STORAGE_MODE=supabase`.
+- Required environment variables:
+  - `VITE_SUPABASE_URL`
+  - `VITE_SUPABASE_ANON_KEY`
+- Create a **public** Supabase Storage bucket named `card-audio` before uploading.
+- In Supabase mode, uploaded MP3 files are stored in `card-audio` and `audioUrl` is saved as a public URL.
+- This integration affects **audio file storage only**. Card content, review history, and other app data remain local-first in browser storage.
+
 ## Study Flow
 
 - Lower study levels still use deterministic cloze blanks, while full-recall cards now offer two optional pre-flip hints: a first-character skeleton and a light token reveal.
