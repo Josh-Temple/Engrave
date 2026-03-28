@@ -77,3 +77,12 @@
 - No architecture or runtime behavior changes; this session is docs/setup polish only.
 - Small runtime-safe polish: `src/lib/supabase.ts` now lazy-loads the Supabase SDK at call time and caches the client, preserving local mode behavior in environments where the SDK is unavailable until explicitly needed.
 - Small UI fix: `ItemCard` now consistently uses `audioUrl || audioDataUrl` for MP3 indicator and preview playback, fixing a missing-variable TypeScript error and supporting both legacy/new audio fields.
+
+## Session Update (2026-03-28, Supabase Audio Final Verification)
+
+- Re-verified repository integration for audio-only Supabase Storage mode without expanding scope to Auth/DB/sync features.
+- Confirmed `@supabase/supabase-js` is present in dependencies and `src/lib/supabase.ts` initializes from `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`.
+- Confirmed `src/lib/audioStorage.ts` switches behavior via `VITE_AUDIO_STORAGE_MODE`, uploading MP3 files to the `card-audio` bucket in Supabase mode and returning a public URL.
+- Confirmed local mode (`VITE_AUDIO_STORAGE_MODE=local`) remains available and unchanged.
+- Validation commands completed successfully: `npm run lint` and `npm run build`.
+- No Supabase SQL, bucket strategy, Auth, signed URL, or sync architecture changes were made.
