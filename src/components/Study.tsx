@@ -4,6 +4,7 @@ import { Flashcard } from './Card';
 import { View } from '../App';
 import { ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { escapeHtml } from '../lib/textSafety';
 
 type HintStage = 0 | 1 | 2;
 
@@ -11,12 +12,14 @@ function isPunctuationOrWhitespace(word: string): boolean {
   return /^[\p{P}\p{S}\s]+$/u.test(word);
 }
 
+function formatRubyText(word: string, ruby?: string): string {
+  const safeWord = escapeHtml(word);
+  if (!ruby) return safeWord;
+  return `<ruby>${safeWord}<rt>${escapeHtml(ruby)}</rt></ruby>`;
+}
+
 function generateFullText(segments: Segment[]): string {
-  return segments.map((seg) => {
-    const word = seg[0];
-    const ruby = seg[1];
-    return ruby ? `<ruby>${word}<rt>${ruby}</rt></ruby>` : word;
-  }).join('');
+  return segments.map(([word, ruby]) => formatRubyText(word, ruby)).join('');
 }
 
 function generateClozeText(segments: Segment[], level: number, isAllClozed = false): string {
@@ -45,13 +48,13 @@ function generateClozeText(segments: Segment[], level: number, isAllClozed = fal
       return ruby ? `<ruby>${blankStr}<rt>&nbsp;</rt></ruby>` : blankStr;
     }
 
-    return ruby ? `<ruby>${word}<rt>${ruby}</rt></ruby>` : word;
+    return formatRubyText(word, ruby);
   }).join('');
 }
 
 function generateFirstCharacterHint(segments: Segment[]): string {
   return segments.map(([word]) => {
-    if (isPunctuationOrWhitespace(word)) return word;
+    if (isPunctuationOrWhitespace(word)) return escapeHtml(word);
 
     const visibleChars = Array.from(word);
     const skeleton = `${visibleChars[0] ?? ''}${'＿'.repeat(Math.max(1, visibleChars.length - 1))}`;
@@ -70,9 +73,9 @@ function generateLightRevealHint(segments: Segment[]): string {
     const word = seg[0];
     const ruby = seg[1];
 
-    if (isPunctuationOrWhitespace(word)) return word;
+    if (isPunctuationOrWhitespace(word)) return escapeHtml(word);
     if (shouldRevealToken(index, word)) {
-      return ruby ? `<ruby>${word}<rt>${ruby}</rt></ruby>` : word;
+      return formatRubyText(word, ruby);
     }
 
     const blankStr = '＿'.repeat(Math.max(2, Array.from(word).length));

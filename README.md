@@ -56,6 +56,8 @@ Vercel will use:
 
 - App data is persisted in-browser with Zustand persistence.
 - The storage key is now kept stable and hydration includes normalization/migration safeguards for future schema changes.
+- Segment/source data is now normalized on create, edit, import, and hydration to reject malformed payloads and trim optional text fields before persistence.
+- Study card ruby rendering now escapes segment text/reading content before injecting markup, mitigating script-injection vectors when using raw markdown rendering for ruby tags.
 - In **Settings**, you can now:
   - **Download backup** as JSON
   - **Restore backup** from a previously exported JSON file
