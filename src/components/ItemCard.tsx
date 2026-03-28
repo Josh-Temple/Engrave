@@ -74,7 +74,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
       <div>
         <h2 className="text-lg font-medium text-gray-900 truncate">{item.source}</h2>
         <p className="text-sm text-gray-400 truncate mt-1">{previewText}</p>
-        {item.audioDataUrl && (
+        {audioSrc && (
           <span className="inline-flex items-center gap-1 mt-2 text-xs text-gray-400">
             <Volume2 size={14} /> MP3
           </span>

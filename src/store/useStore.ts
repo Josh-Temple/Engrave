@@ -15,6 +15,7 @@ export interface MemoryItem {
   easeFactor: number;
   repetitions: number;
   createdAt: number;
+  audioUrl?: string;
   audioDataUrl?: string;
   note?: string;
 }
@@ -36,7 +37,7 @@ export interface BackupPayload {
 interface AppState {
   items: MemoryItem[];
   settings: AppSettings;
-  addItem: (source: string, segments: Segment[], audioDataUrl?: string, note?: string) => void;
+  addItem: (source: string, segments: Segment[], audioUrl?: string, note?: string) => void;
   deleteItem: (id: string) => void;
   updateItem: (id: string, updates: Partial<MemoryItem>) => void;
   reviewItem: (id: string, rating: ReviewRating) => void;
@@ -91,6 +92,12 @@ const normalizeItem = (item: unknown): MemoryItem | null => {
     easeFactor: typeof candidate.easeFactor === 'number' ? candidate.easeFactor : 2.5,
     repetitions: typeof candidate.repetitions === 'number' ? candidate.repetitions : 0,
     createdAt: typeof candidate.createdAt === 'number' ? candidate.createdAt : Date.now(),
+    audioUrl:
+      typeof candidate.audioUrl === 'string'
+        ? candidate.audioUrl
+        : typeof candidate.audioDataUrl === 'string'
+          ? candidate.audioDataUrl
+          : undefined,
     audioDataUrl: typeof candidate.audioDataUrl === 'string' ? candidate.audioDataUrl : undefined,
     note: normalizeOptionalNote(candidate.note),
   };
@@ -154,7 +161,7 @@ export const useStore = create<AppState>()(
       items: [],
       settings: defaultSettings(),
 
-      addItem: (source, segments, audioDataUrl, note) => {
+      addItem: (source, segments, audioUrl, note) => {
         const newItem: MemoryItem = {
           id: crypto.randomUUID(),
           source,
@@ -165,7 +172,8 @@ export const useStore = create<AppState>()(
           easeFactor: 2.5,
           repetitions: 0,
           createdAt: Date.now(),
-          audioDataUrl,
+          audioUrl,
+          audioDataUrl: audioUrl,
           note: normalizeOptionalNote(note),
         };
         set((state) => ({ items: [newItem, ...state.items] }));
