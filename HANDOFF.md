@@ -63,3 +63,17 @@
 - Kept local audio mode behavior unchanged (`VITE_AUDIO_STORAGE_MODE=local`).
 - Updated README with env vars and setup notes for `VITE_AUDIO_STORAGE_MODE=supabase` and public bucket requirements.
 - No Auth, DB schema, Edge Functions, or sync features were added in this session.
+
+## Session Update (2026-03-28, Setup/Docs Polish)
+
+- Updated `.env.example` with Supabase audio-mode variables:
+  - `VITE_AUDIO_STORAGE_MODE` (default `local`)
+  - `VITE_SUPABASE_URL`
+  - `VITE_SUPABASE_ANON_KEY`
+- Added comments clarifying Supabase is used for audio file storage only.
+- Expanded README local setup instructions with optional Supabase env configuration.
+- Expanded Vercel deploy instructions to explicitly list Supabase-related env vars for `supabase` audio mode.
+- Added a compact Supabase troubleshooting checklist (bucket existence, public bucket, env vars, redeploy after env changes).
+- No architecture or runtime behavior changes; this session is docs/setup polish only.
+- Small runtime-safe polish: `src/lib/supabase.ts` now lazy-loads the Supabase SDK at call time and caches the client, preserving local mode behavior in environments where the SDK is unavailable until explicitly needed.
+- Small UI fix: `ItemCard` now consistently uses `audioUrl || audioDataUrl` for MP3 indicator and preview playback, fixing a missing-variable TypeScript error and supporting both legacy/new audio fields.

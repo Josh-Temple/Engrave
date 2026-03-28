@@ -49,7 +49,8 @@ const buildAudioPath = (file: File): string => {
 };
 
 const prepareSupabaseAudio = async (file: File): Promise<string> => {
-  const { supabase } = await import('./supabase');
+  const { getSupabaseClient } = await import('./supabase');
+  const supabase = await getSupabaseClient();
   const path = buildAudioPath(file);
 
   const { error: uploadError } = await supabase.storage
