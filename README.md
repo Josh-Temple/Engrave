@@ -65,6 +65,9 @@ Vercel will use:
 ## Audio per Card
 
 - You can now attach an **MP3** audio file to each card during creation/edit.
+- Audio uploads now include a size guard for local-storage safety (current threshold: **700KB** per file). If exceeded, the UI shows guidance instead of attempting a save that is likely to hit browser storage quota.
+- Audio processing now goes through `src/lib/audioStorage.ts`, which centralizes provider selection (`VITE_AUDIO_STORAGE_MODE`) so future migration from local Data URL storage to Supabase Storage can be implemented in one place.
+- The data model now keeps an `audioUrl` field (while preserving `audioDataUrl` compatibility) to simplify a later switch to remote URL-based storage.
 - The Edit Card screen now includes a dedicated **Memo** textarea so memo updates do not require direct JSON editing.
 - Study cards now keep their content area independently scrollable, so long passages can be read fully without clipping.
 - On the study card back side, a **Play Audio** button is shown when audio exists.
@@ -87,3 +90,4 @@ Vercel will use:
 
 - Card action icons (practice / edit / delete) were moved to each card’s lower action row to avoid overlapping long titles.
 - Library cards can now be reordered manually using up/down controls, and this order is used for non-random study sessions.
+- Cards with attached audio now show a dedicated play/pause action in the Library list so audio can be previewed without opening Study mode.

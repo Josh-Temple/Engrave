@@ -17,6 +17,7 @@ import {
   QuickAddLanguage,
   SegmentationMode,
 } from "../lib/segmentText";
+import { prepareAudioForStorage } from "../lib/audioStorage";
 import { useStore, Segment } from "../store/useStore";
 
 const JSON_TEMPLATE = `{
@@ -246,13 +247,20 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
       return;
     }
 
-    addItem(
-      quickSource.trim(),
-      finalQuickSegments,
-      audioDataUrl || undefined,
-      memo.trim() || undefined,
-    );
-    onNavigate("home");
+    try {
+      addItem(
+        quickSource.trim(),
+        finalQuickSegments,
+        audioDataUrl || undefined,
+        memo.trim() || undefined,
+      );
+      onNavigate("home");
+    } catch (error) {
+      console.error(error);
+      setError(
+        "Failed to save card. Browser storage quota was exceeded. Please remove or shorten audio files, then try again.",
+      );
+    }
   };
 
   const handleAdvancedSave = () => {
@@ -279,13 +287,20 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
         }
       }
 
-      addItem(
-        parsed.source,
-        parsed.segments as Segment[],
-        audioDataUrl || undefined,
-        parsed.note?.trim() || undefined,
-      );
-      onNavigate("home");
+      try {
+        addItem(
+          parsed.source,
+          parsed.segments as Segment[],
+          audioDataUrl || undefined,
+          parsed.note?.trim() || undefined,
+        );
+        onNavigate("home");
+      } catch (error) {
+        console.error(error);
+        setError(
+          "Failed to save card. Browser storage quota was exceeded. Please remove or shorten audio files, then try again.",
+        );
+      }
     } catch (e: any) {
       setError(e.message || "Invalid JSON format");
     }
@@ -300,22 +315,17 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
     handleAdvancedSave();
   };
 
-  const handleAudioUpload = (file?: File) => {
+  const handleAudioUpload = async (file?: File) => {
     if (!file) return;
-
-    if (file.type !== "audio/mpeg" && file.type !== "audio/mp3") {
-      setError("Only MP3 files are supported.");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      setAudioDataUrl(String(reader.result));
+    try {
+      const preparedAudio = await prepareAudioForStorage(file);
+      setAudioDataUrl(preparedAudio);
       setAudioFileName(file.name);
       setError("");
-    };
-    reader.onerror = () => setError("Failed to read the audio file.");
-    reader.readAsDataURL(file);
+    } catch (error) {
+      console.error(error);
+      setError(error instanceof Error ? error.message : "Failed to process audio file.");
+    }
   };
 
   const clearAudio = () => {
