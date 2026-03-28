@@ -86,3 +86,16 @@
 - Confirmed local mode (`VITE_AUDIO_STORAGE_MODE=local`) remains available and unchanged.
 - Validation commands completed successfully: `npm run lint` and `npm run build`.
 - No Supabase SQL, bucket strategy, Auth, signed URL, or sync architecture changes were made.
+
+## Session Update (2026-03-28, Supabase Upload Troubleshooting Docs)
+
+- Updated README Supabase troubleshooting with a missing but critical note: **public bucket alone does not grant browser upload** when Storage RLS blocks `anon`.
+- Added a minimal SQL policy example for `storage.objects` insert access scoped to bucket `card-audio`.
+- Added guidance for common upload failure symptom (`row-level security policy` error) and note about optional update policy for overwrite use cases.
+- No runtime behavior changes in app code; this session is documentation-only to reduce setup mistakes during Supabase upload configuration.
+
+## Session Update (2026-03-28, Supabase Setup Ownership Clarification)
+
+- Expanded README with a new **Setup Ownership (Who does what)** section to clearly separate dashboard tasks (user-side) from behavior already implemented in app code.
+- Added a short **Quick Verification Steps** checklist to validate bucket visibility, policy setup, env vars, and upload behavior in order.
+- No runtime code changes; docs-only clarification update.

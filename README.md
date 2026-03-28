@@ -103,8 +103,42 @@ Vercel will use:
 
 - If uploads fail, confirm the `card-audio` bucket exists in your Supabase project.
 - Confirm the `card-audio` bucket is set to **public**.
+- Confirm Storage RLS policies allow `anon` upload to `card-audio` (public bucket alone is not enough for browser uploads).
+- In Supabase SQL Editor, you can use this minimal upload policy:
+
+```sql
+create policy "Allow anon upload to card-audio"
+on storage.objects
+for insert
+to anon
+with check (bucket_id = 'card-audio');
+```
+
+- If you also need to overwrite existing paths in the future, add an `update` policy for the same bucket.
+- If you see an error mentioning `row-level security policy`, it usually means the upload policy above is missing or too strict.
 - Confirm Vercel environment variables are set (`VITE_AUDIO_STORAGE_MODE`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`).
 - Confirm you redeployed after changing environment variables in Vercel.
+
+#### Setup Ownership (Who does what)
+
+- **You (project owner) do this in Supabase/Vercel dashboards:**
+  - Set `VITE_AUDIO_STORAGE_MODE=supabase`
+  - Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
+  - Create `card-audio` bucket and mark it public
+  - Add Storage RLS upload policy for `anon`
+- **This app code already does:**
+  - Upload MP3 files to `card-audio` when `VITE_AUDIO_STORAGE_MODE=supabase`
+  - Store returned public URL into `audioUrl`
+  - Keep card/review data local-first in browser storage
+
+#### Quick Verification Steps
+
+1. Open Supabase → **Storage** → confirm bucket `card-audio` exists and is public.
+2. Open Supabase → **SQL Editor** → run the `insert` policy SQL above.
+3. In app `.env.local`, set `VITE_AUDIO_STORAGE_MODE=supabase`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_ANON_KEY`.
+4. Restart dev server (`npm run dev`) or redeploy if on Vercel.
+5. Upload a small MP3 from Create/Edit screen.
+6. If it fails with RLS-related text, revisit step 2; if it fails with missing env text, revisit step 3.
 
 ## Study Flow
 
