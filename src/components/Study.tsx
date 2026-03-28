@@ -93,17 +93,34 @@ export function Study({ onNavigate, practiceItemId }: { onNavigate: (v: View) =>
   const isPractice = !!practiceItemId;
   const listedDueItems = isPractice ? [] : getDueItems();
   const dueKey = listedDueItems.map((item) => item.id).join('|');
+  const [randomDueItemIds, setRandomDueItemIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (isPractice || reviewOrder !== 'random') {
+      setRandomDueItemIds([]);
+      return;
+    }
+
+    const shuffledIds = listedDueItems.map((item) => item.id);
+    for (let i = shuffledIds.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledIds[i], shuffledIds[j]] = [shuffledIds[j], shuffledIds[i]];
+    }
+    setRandomDueItemIds(shuffledIds);
+  }, [dueKey, isPractice, listedDueItems, reviewOrder]);
+
   const dueItems = useMemo(() => {
     if (isPractice) return [];
     if (reviewOrder === 'listed') return listedDueItems;
 
-    const shuffled = [...listedDueItems];
-    for (let i = shuffled.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  }, [dueKey, isPractice, listedDueItems, reviewOrder]);
+    const dueItemMap = new Map(listedDueItems.map((item) => [item.id, item]));
+    const ordered = randomDueItemIds
+      .map((id) => dueItemMap.get(id))
+      .filter((item): item is typeof listedDueItems[number] => Boolean(item));
+
+    if (ordered.length === listedDueItems.length) return ordered;
+    return listedDueItems;
+  }, [isPractice, listedDueItems, randomDueItemIds, reviewOrder]);
   const practiceItem = isPractice ? items.find((i) => i.id === practiceItemId) : null;
 
   const currentItem = isPractice ? practiceItem : dueItems[0];
@@ -159,6 +176,17 @@ export function Study({ onNavigate, practiceItemId }: { onNavigate: (v: View) =>
   };
 
   const hintButtonLabel = hintStage === 0 ? 'Need a hint?' : 'Show one more hint';
+  const plainBodyText = currentItem ? currentItem.segments.map(([word]) => word).join('') : '';
+
+  const handleCopyPracticeText = async () => {
+    if (!currentItem) return;
+    const copyPayload = `Source: ${currentItem.source}\nText: ${plainBodyText}`;
+    try {
+      await navigator.clipboard.writeText(copyPayload);
+    } catch {
+      // no-op: clipboard API can be unavailable in some contexts
+    }
+  };
 
   return (
     <div className="max-w-md mx-auto h-screen flex flex-col bg-gray-50">
@@ -191,6 +219,8 @@ export function Study({ onNavigate, practiceItemId }: { onNavigate: (v: View) =>
                 audioDataUrl={currentItem.audioUrl || currentItem.audioDataUrl}
                 note={currentItem.note}
                 autoPlayAudioOnBack={autoPlayAudioOnBack}
+                showBackCopyButton={isPractice}
+                onCopyBackText={handleCopyPracticeText}
               />
             </motion.div>
           ) : (

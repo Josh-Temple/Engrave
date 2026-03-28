@@ -10,6 +10,11 @@
 
 ## Latest Session Changes
 
+- Practice Mode card back now shows a top-right copy action that copies `source` + body text to clipboard.
+- Clipboard payload intentionally strips ruby/furigana by joining only raw segment text.
+- Fixed random-order study regression where flipping to back could reshuffle and switch cards before the user rated the current card.
+- Random order is now generated once per due-set snapshot and reused for stable back-side review interaction.
+
 - Library cards with attached audio now include a dedicated play/pause button in the action row, allowing direct audio preview from the card list.
 - Settings screen audio auto-play switch alignment was corrected by updating the track/thumb layout so the toggle knob remains visually centered in both states.
 - Study card memo drawer now explicitly enters from the bottom edge (`initial y = offscreen-bottom`) when opened on the back side.
