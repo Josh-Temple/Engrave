@@ -100,6 +100,13 @@
 - Added a short **Quick Verification Steps** checklist to validate bucket visibility, policy setup, env vars, and upload behavior in order.
 - No runtime code changes; docs-only clarification update.
 
+## Session Update (2026-03-28, Supabase Upload Client Dependency Removal)
+
+- Reworked `src/lib/supabase.ts` to use direct Supabase Storage REST calls (`fetch`) instead of importing `@supabase/supabase-js`.
+- This removes the runtime/dev dependency on the Supabase JS package and resolves browser errors like `Failed to resolve module specifier "@supabase/supabase-js"` in restricted environments.
+- Kept the existing `getSupabaseClient().storage.from(...).upload/getPublicUrl` interface shape so `audioStorage.ts` behavior and call sites remain unchanged.
+- Removed `@supabase/supabase-js` from `package.json` dependencies.
+
 ## Session Update (2026-03-28, Production Module Resolution / SW Cache Hardening)
 
 - Hardened `public/sw.js` runtime caching strategy:
