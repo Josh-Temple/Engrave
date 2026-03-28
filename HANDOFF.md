@@ -10,11 +10,6 @@
 
 ## Latest Session Changes
 
-- Added `src/lib/audioStorage.ts` as a centralized audio provider boundary (`local` vs `supabase` mode), with current local implementation and Supabase stub for migration work.
-- Create/Edit audio upload flows now call the shared `prepareAudioForStorage` helper instead of duplicating FileReader logic.
-- Memory item schema now includes `audioUrl` (with backward compatibility to legacy `audioDataUrl`) to make future remote-storage migration smoother.
-- Create/Edit audio upload now rejects MP3 files larger than 700KB with a clear error message to reduce localStorage quota failures.
-- Create/Edit save flows now catch storage-quota failures and show a user-facing message explaining that browser storage was exceeded.
 - Library cards with attached audio now include a dedicated play/pause button in the action row, allowing direct audio preview from the card list.
 - Settings screen audio auto-play switch alignment was corrected by updating the track/thumb layout so the toggle knob remains visually centered in both states.
 - Study card memo drawer now explicitly enters from the bottom edge (`initial y = offscreen-bottom`) when opened on the back side.
