@@ -155,6 +155,7 @@ with check (bucket_id = 'card-audio');
 - In **Practice Mode**, the back side now shows a copy icon at the top-right; tapping it copies `source + plain body text` (without ruby/furigana readings) to the clipboard.
 - Random study order behavior on the back side now keeps the current card stable so rating buttons can be used correctly after flip.
 - Card flip rendering now uses explicit CSS 3D transforms (with WebKit-prefixed style fields) inside the card component so mobile/webview browsers that struggled with Framer Motion `rotateY` still reliably show the back face.
+- Fixed a tap-flip regression where the card state could reset to front immediately after a flip because a reset effect depended on a changing callback reference (`onFlipChange`). The reset now depends only on `resetKey`, so back-side visibility remains stable after tap/flip.
 
 ## Library Improvements
 
