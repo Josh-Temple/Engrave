@@ -126,3 +126,17 @@
 - Hardened store writes/reads (`addItem`, `updateItem`, backup import, hydration) to normalize source/note fields and reject invalid segment payloads before persistence.
 - Mitigated ruby-markup XSS risk in study rendering by escaping segment text/reading values before composing `<ruby><rt>` HTML strings consumed by markdown.
 - Refactored duplicated Flashcard markdown rendering into a small shared `CardMarkdown` helper component for maintainability.
+
+## Session Update (2026-03-28, Random Study Loop Fix)
+
+- Fixed a Study-mode regression where `reviewOrder = random` could reshuffle due cards on repeated renders.
+- Root cause: randomization effect depended on a freshly-created due-items array each render, causing repeated `setState` and card remount loops.
+- `src/components/Study.tsx` now derives stable randomization input from `dueKey` (ID signature) and shuffles `listedDueItemIds` generated from that stable key.
+- Result: random order remains stable for the current due-set snapshot, and learning-mode card display no longer loops endlessly.
+
+## Session Update (2026-03-29, Memo/Review Layout Adjustment)
+
+- Adjusted Study back-side layout so review actions are positioned directly below the card body for memo cards as well.
+- Moved memo content display out of the in-card draggable drawer to a dedicated panel in the lower section (below review/finish actions).
+- Added a back-side memo control behavior that toggles whether this lower memo panel is raised upward (closer to the card) or lowered (default position beneath actions).
+- Wired `Flashcard` → `Study` state via `onFlipChange` and `onMemoToggle` so memo panel visibility/position follows card side and user toggle actions.

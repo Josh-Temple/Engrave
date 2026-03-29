@@ -5,6 +5,7 @@ import { View } from '../App';
 import { ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { escapeHtml } from '../lib/textSafety';
+import { cn } from '../lib/utils';
 
 type HintStage = 0 | 1 | 2;
 
@@ -93,6 +94,7 @@ export function Study({ onNavigate, practiceItemId }: { onNavigate: (v: View) =>
   const isPractice = !!practiceItemId;
   const listedDueItems = isPractice ? [] : getDueItems();
   const dueKey = listedDueItems.map((item) => item.id).join('|');
+  const listedDueItemIds = useMemo(() => (dueKey ? dueKey.split('|') : []), [dueKey]);
   const [randomDueItemIds, setRandomDueItemIds] = useState<string[]>([]);
 
   useEffect(() => {
@@ -101,13 +103,13 @@ export function Study({ onNavigate, practiceItemId }: { onNavigate: (v: View) =>
       return;
     }
 
-    const shuffledIds = listedDueItems.map((item) => item.id);
+    const shuffledIds = [...listedDueItemIds];
     for (let i = shuffledIds.length - 1; i > 0; i -= 1) {
       const j = Math.floor(Math.random() * (i + 1));
       [shuffledIds[i], shuffledIds[j]] = [shuffledIds[j], shuffledIds[i]];
     }
     setRandomDueItemIds(shuffledIds);
-  }, [dueKey, isPractice, listedDueItems, reviewOrder]);
+  }, [isPractice, listedDueItemIds, reviewOrder]);
 
   const dueItems = useMemo(() => {
     if (isPractice) return [];
@@ -126,6 +128,8 @@ export function Study({ onNavigate, practiceItemId }: { onNavigate: (v: View) =>
   const currentItem = isPractice ? practiceItem : dueItems[0];
   const [practiceDone, setPracticeDone] = useState(false);
   const [hasFlipped, setHasFlipped] = useState(false);
+  const [isBackVisible, setIsBackVisible] = useState(false);
+  const [isMemoLifted, setIsMemoLifted] = useState(false);
   const [hintStage, setHintStage] = useState<HintStage>(0);
   const reverseRef = useRef<Record<string, boolean>>({});
 
@@ -137,6 +141,8 @@ export function Study({ onNavigate, practiceItemId }: { onNavigate: (v: View) =>
 
   useEffect(() => {
     setHasFlipped(false);
+    setIsBackVisible(false);
+    setIsMemoLifted(false);
     setHintStage(0);
   }, [currentItem?.id]);
 
@@ -199,7 +205,7 @@ export function Study({ onNavigate, practiceItemId }: { onNavigate: (v: View) =>
         </span>
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center p-6 relative">
+      <div className="flex-1 flex flex-col items-center justify-center px-6 pt-2 pb-6 relative">
         <AnimatePresence mode="wait">
           {currentItem && !practiceDone ? (
             <motion.div
@@ -208,19 +214,25 @@ export function Study({ onNavigate, practiceItemId }: { onNavigate: (v: View) =>
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -20 }}
               transition={{ duration: 0.2 }}
-              className="w-full"
+              className="w-full max-w-sm"
             >
               <Flashcard
                 header={getHeader()}
                 frontText={getFrontText()}
                 backText={getBackText()}
                 onFlip={() => setHasFlipped(true)}
+                onFlipChange={(isBack) => {
+                  setIsBackVisible(isBack);
+                  if (!isBack) setIsMemoLifted(false);
+                }}
                 resetKey={`${currentItem.id}:${hintStage}`}
                 audioDataUrl={currentItem.audioUrl || currentItem.audioDataUrl}
                 note={currentItem.note}
                 autoPlayAudioOnBack={autoPlayAudioOnBack}
                 showBackCopyButton={isPractice}
                 onCopyBackText={handleCopyPracticeText}
+                isMemoLifted={isMemoLifted}
+                onMemoToggle={() => setIsMemoLifted((prev) => !prev)}
               />
             </motion.div>
           ) : (
@@ -249,14 +261,13 @@ export function Study({ onNavigate, practiceItemId }: { onNavigate: (v: View) =>
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
 
-      <div className="h-36 p-6 flex flex-col items-center justify-center gap-3">
+        <div className="w-full max-w-sm mt-4 min-h-[112px] flex flex-col items-center justify-center gap-3">
         {currentItem && !hasFlipped && isFullRecallFront && hintStage < 2 && (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="w-full max-w-xs text-center"
+              className="w-full text-center"
           >
             <p className="text-xs text-gray-400 mb-3">Try first. Use a hint only if needed.</p>
             <button
@@ -275,7 +286,7 @@ export function Study({ onNavigate, practiceItemId }: { onNavigate: (v: View) =>
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               onClick={() => onNavigate('home')}
-              className="w-full max-w-xs h-16 bg-gray-900 text-white rounded-2xl font-medium text-lg hover:bg-gray-800 transition-colors shadow-lg"
+                className="w-full h-16 bg-gray-900 text-white rounded-2xl font-medium text-lg hover:bg-gray-800 transition-colors shadow-lg"
             >
               Finish Practice
             </motion.button>
@@ -283,7 +294,7 @@ export function Study({ onNavigate, practiceItemId }: { onNavigate: (v: View) =>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="grid grid-cols-3 gap-3 w-full max-w-sm"
+                className="grid grid-cols-3 gap-3 w-full"
             >
               <button
                 onClick={() => handleReview('again')}
@@ -305,6 +316,24 @@ export function Study({ onNavigate, practiceItemId }: { onNavigate: (v: View) =>
               </button>
             </motion.div>
           )
+        )}
+        </div>
+
+        {currentItem?.note && isBackVisible && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: isMemoLifted ? -48 : 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+            className={cn(
+              'w-full max-w-sm rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm',
+              isMemoLifted ? 'mb-2' : 'mt-2'
+            )}
+          >
+            <div className="text-xs font-bold tracking-wider text-gray-500 uppercase mb-2">Memo</div>
+            <p className="text-sm leading-relaxed text-gray-700 whitespace-pre-wrap max-h-28 overflow-y-auto overscroll-contain">
+              {currentItem.note}
+            </p>
+          </motion.div>
         )}
       </div>
     </div>
