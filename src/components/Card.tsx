@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 import { Volume2, ChevronUp, ChevronDown, Copy } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -84,11 +83,16 @@ export function Flashcard({
 
   return (
     <div className="relative w-full aspect-[3/4] max-w-sm mx-auto perspective-1000" onClick={handleFlip}>
-      <motion.div
+      <div
         className="w-full h-full relative preserve-3d cursor-pointer"
-        initial={false}
-        animate={{ rotateY: flipped ? 180 : 0 }}
-        transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+        style={{
+          transform: `rotateY(${flipped ? 180 : 0}deg)`,
+          WebkitTransform: `rotateY(${flipped ? 180 : 0}deg)`,
+          transformStyle: 'preserve-3d',
+          WebkitTransformStyle: 'preserve-3d',
+          transition: 'transform 380ms cubic-bezier(0.22, 1, 0.36, 1)',
+          WebkitTransition: '-webkit-transform 380ms cubic-bezier(0.22, 1, 0.36, 1)',
+        }}
       >
         <div
           className={cn(
@@ -167,7 +171,7 @@ export function Flashcard({
           )}
           {audioDataUrl && <audio ref={audioRef} src={audioDataUrl} preload="metadata" />}
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

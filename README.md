@@ -154,6 +154,7 @@ with check (bucket_id = 'card-audio');
 - Random order in Study mode is now snapshotted per due-list state, preventing repeated reshuffles/re-renders while reviewing a card.
 - In **Practice Mode**, the back side now shows a copy icon at the top-right; tapping it copies `source + plain body text` (without ruby/furigana readings) to the clipboard.
 - Random study order behavior on the back side now keeps the current card stable so rating buttons can be used correctly after flip.
+- Card flip rendering now uses explicit CSS 3D transforms (with WebKit-prefixed style fields) inside the card component so mobile/webview browsers that struggled with Framer Motion `rotateY` still reliably show the back face.
 
 ## Library Improvements
 
