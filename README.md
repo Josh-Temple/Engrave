@@ -85,8 +85,8 @@ Vercel will use:
 - The Edit Card screen now includes a dedicated **Memo** textarea so memo updates do not require direct JSON editing.
 - Study cards now keep their content area independently scrollable, so long passages can be read fully without clipping.
 - On the study card back side, a **Play Audio** button is shown when audio exists.
-- Memo is hidden while the card front is visible. When the study card back is shown, memo content stays hidden by default and can be opened from the back-side control as a lightweight draggable drawer with `closed / peek / expanded` states.
-- Memo controls now use up/down arrow affordances (instead of note/close semantics) to better match the drawer’s actual vertical movement behavior.
+- Memo is hidden while the card front is visible. When the study card back is shown, memo content appears in the lower section beneath answer/finish actions by default.
+- Memo controls use up/down arrows, and tapping the card-back memo control raises/lowers the memo panel to bring it closer to the card text when needed.
 - In **Settings**, you can choose between:
   - Manual playback (default)
   - Auto-play when the card back is shown
@@ -151,6 +151,7 @@ with check (bucket_id = 'card-audio');
 - Full-recall hints are session-local UI only; the persisted `level` model remains 0-5 with reverse mode still at level 5.
 - Review now uses three ratings after flip: **Again**, **Hard**, and **Good**. Hard keeps the current prompt difficulty while applying a smaller interval increase than Good.
 - In **Settings**, normal study order can now be switched between **Library order** and **Random**.
+- Random order in Study mode is now snapshotted per due-list state, preventing repeated reshuffles/re-renders while reviewing a card.
 - In **Practice Mode**, the back side now shows a copy icon at the top-right; tapping it copies `source + plain body text` (without ruby/furigana readings) to the clipboard.
 - Random study order behavior on the back side now keeps the current card stable so rating buttons can be used correctly after flip.
 

@@ -1,4 +1,4 @@
-import { motion, useDragControls } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 import { Volume2, ChevronUp, ChevronDown, Copy } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -20,6 +20,8 @@ interface FlashcardProps {
   autoPlayAudioOnBack?: boolean;
   onCopyBackText?: () => void;
   showBackCopyButton?: boolean;
+  isMemoLifted?: boolean;
+  onMemoToggle?: () => void;
 }
 
 const markdownClassName =
@@ -47,55 +49,17 @@ export function Flashcard({
   autoPlayAudioOnBack,
   onCopyBackText,
   showBackCopyButton = false,
+  isMemoLifted = false,
+  onMemoToggle,
 }: FlashcardProps) {
   const [flipped, setFlipped] = useState(false);
-  const [memoDrawerState, setMemoDrawerState] = useState<'closed' | 'peek' | 'expanded'>('closed');
-  const [drawerSizing, setDrawerSizing] = useState({ expandedHeight: 320, peekHeight: 190 });
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const cardRef = useRef<HTMLDivElement | null>(null);
-  const dragControls = useDragControls();
   const hasMemo = Boolean(note);
-
-  const { expandedHeight, peekHeight } = drawerSizing;
-  const isMemoOpen = memoDrawerState !== 'closed';
-  const shouldRenderMemoDrawer = hasMemo && flipped;
-
-  useEffect(() => {
-    const updateSizing = () => {
-      const cardHeight = cardRef.current?.getBoundingClientRect().height ?? 0;
-      const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 0;
-      const dynamicPeekRatio = viewportHeight >= 900 ? 0.48 : 0.42;
-      const expandedHeight = Math.max(280, Math.min(Math.round(cardHeight * 0.86), 520));
-      const peekHeight = Math.max(170, Math.min(Math.round(cardHeight * dynamicPeekRatio), 300));
-
-      setDrawerSizing({
-        expandedHeight,
-        peekHeight: Math.min(peekHeight, expandedHeight - 72),
-      });
-    };
-
-    updateSizing();
-    window.addEventListener('resize', updateSizing);
-    return () => window.removeEventListener('resize', updateSizing);
-  }, []);
-
-  const getDrawerY = () => {
-    if (memoDrawerState === 'expanded') return 0;
-    if (memoDrawerState === 'peek') return expandedHeight - peekHeight;
-    return expandedHeight + 20;
-  };
 
   useEffect(() => {
     setFlipped(false);
-    setMemoDrawerState('closed');
     onFlipChange?.(false);
   }, [resetKey, onFlipChange]);
-
-  useEffect(() => {
-    if (!hasMemo) {
-      setMemoDrawerState('closed');
-    }
-  }, [hasMemo]);
 
   const playAudio = async () => {
     if (!audioRef.current) return;
@@ -108,14 +72,10 @@ export function Flashcard({
   };
 
   const handleFlip = () => {
-    if (isMemoOpen) return;
     const nextFlipped = !flipped;
     if (!flipped && onFlip) onFlip();
     setFlipped(nextFlipped);
     onFlipChange?.(nextFlipped);
-    if (!nextFlipped) {
-      setMemoDrawerState('closed');
-    }
 
     if (nextFlipped && audioDataUrl && autoPlayAudioOnBack) {
       void playAudio();
@@ -123,7 +83,7 @@ export function Flashcard({
   };
 
   return (
-    <div ref={cardRef} className="relative w-full aspect-[3/4] max-w-sm mx-auto perspective-1000" onClick={handleFlip}>
+    <div className="relative w-full aspect-[3/4] max-w-sm mx-auto perspective-1000" onClick={handleFlip}>
       <motion.div
         className="w-full h-full relative preserve-3d cursor-pointer"
         initial={false}
@@ -195,12 +155,12 @@ export function Flashcard({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setMemoDrawerState((prev) => (prev === 'closed' ? 'peek' : 'closed'));
+                    onMemoToggle?.();
                   }}
                   className="w-full h-12 rounded-xl bg-white/10 border border-white/20 text-white flex items-center justify-center gap-2 hover:bg-white/20 transition-colors"
                 >
-                  {isMemoOpen ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
-                  <span className="text-sm font-medium">{isMemoOpen ? 'Hide Memo' : 'Show Memo'}</span>
+                  {isMemoLifted ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
+                  <span className="text-sm font-medium">{isMemoLifted ? 'Lower Memo' : 'Raise Memo'}</span>
                 </button>
               )}
             </div>
@@ -208,97 +168,6 @@ export function Flashcard({
           {audioDataUrl && <audio ref={audioRef} src={audioDataUrl} preload="metadata" />}
         </div>
       </motion.div>
-
-      {shouldRenderMemoDrawer && (
-        <div
-          className={cn(
-            'absolute inset-0 z-20 transition-colors duration-200',
-            isMemoOpen ? 'pointer-events-auto bg-black/10' : 'pointer-events-none bg-transparent'
-          )}
-          onClick={(e) => {
-            e.stopPropagation();
-            setMemoDrawerState('closed');
-          }}
-        >
-          <motion.div
-            drag="y"
-            dragListener={false}
-            dragControls={dragControls}
-            dragConstraints={{ top: 0, bottom: expandedHeight + 24 }}
-            dragElastic={0.08}
-            onDragEnd={(_, info) => {
-              const downward = info.offset.y > 72 || info.velocity.y > 520;
-              const upward = info.offset.y < -60 || info.velocity.y < -520;
-
-              if (memoDrawerState === 'expanded') {
-                setMemoDrawerState(downward ? 'peek' : 'expanded');
-                return;
-              }
-
-              if (memoDrawerState === 'peek') {
-                if (upward) {
-                  setMemoDrawerState('expanded');
-                  return;
-                }
-                setMemoDrawerState(downward ? 'closed' : 'peek');
-              }
-            }}
-            initial={{ y: expandedHeight + 20 }}
-            animate={{ y: getDrawerY() }}
-            transition={{ type: 'spring', stiffness: 420, damping: 38, mass: 0.55 }}
-            className="absolute inset-x-0 bottom-0 rounded-t-3xl bg-white border-t border-gray-100 shadow-[0_-8px_30px_rgba(0,0,0,0.15)]"
-            style={{ height: expandedHeight }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div
-              className="flex items-center justify-center py-2 cursor-grab active:cursor-grabbing touch-none"
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                dragControls.start(e);
-              }}
-            >
-              <div className="h-1.5 w-10 rounded-full bg-gray-300" />
-            </div>
-
-            <div className="px-5 pb-4 flex items-center justify-between">
-              <h3 className="text-base font-semibold text-gray-900">Memo</h3>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMemoDrawerState('expanded');
-                  }}
-                  className="inline-flex items-center justify-center w-8 h-8 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-900"
-                  aria-label="Expand memo"
-                >
-                  <ChevronUp size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMemoDrawerState((prev) => (prev === 'expanded' ? 'peek' : 'closed'));
-                  }}
-                  className="inline-flex items-center justify-center w-8 h-8 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-900"
-                  aria-label="Collapse memo"
-                >
-                  <ChevronDown size={16} />
-                </button>
-              </div>
-            </div>
-
-            <div
-              className={cn(
-                'px-5 pb-5 text-sm leading-relaxed text-gray-700 whitespace-pre-wrap',
-                memoDrawerState === 'expanded' ? 'overflow-y-auto overscroll-contain' : 'overflow-hidden'
-              )}
-            >
-              <p>{note}</p>
-            </div>
-          </motion.div>
-        </div>
-      )}
     </div>
   );
 }
