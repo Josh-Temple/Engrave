@@ -53,12 +53,17 @@ export function Flashcard({
 }: FlashcardProps) {
   const [flipped, setFlipped] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const onFlipChangeRef = useRef(onFlipChange);
   const hasMemo = Boolean(note);
 
   useEffect(() => {
+    onFlipChangeRef.current = onFlipChange;
+  }, [onFlipChange]);
+
+  useEffect(() => {
     setFlipped(false);
-    onFlipChange?.(false);
-  }, [resetKey, onFlipChange]);
+    onFlipChangeRef.current?.(false);
+  }, [resetKey]);
 
   const playAudio = async () => {
     if (!audioRef.current) return;

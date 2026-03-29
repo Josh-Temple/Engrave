@@ -154,3 +154,11 @@
 - Fix: replaced card-flip transform animation in `src/components/Card.tsx` with explicit inline CSS 3D transform + transition (`transform`/`WebkitTransform`, `transformStyle`/`WebkitTransformStyle`) on the rotating container.
 - Kept all existing study/practice state behavior unchanged (`onFlip`, `onFlipChange`, reset behavior, memo/audio controls).
 - Verified with `npm run lint` and `npm run build`.
+
+## Session Update (2026-03-29, Flip Reset Regression Fix)
+
+- Reproduced a severe tap-flip defect where the card appeared to start rotating but immediately returned to the front, so the back never stayed visible.
+- Root cause: `Flashcard` reset effect depended on both `resetKey` and `onFlipChange`; in `Study`, `onFlipChange` is an inline callback recreated every render, so any parent re-render re-triggered the reset effect and forced `flipped=false`.
+- Fix: in `src/components/Card.tsx`, added a ref to track the latest `onFlipChange` and changed the reset effect to depend on `resetKey` only. This preserves intended resets while preventing accidental reset loops from callback identity changes.
+- Result: tap/flip now keeps back face visible as expected while existing reset flows (card change/hint-stage reset) remain intact.
+- Verified with `npm run lint` and `npm run build`.
