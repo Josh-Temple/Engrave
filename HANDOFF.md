@@ -140,3 +140,9 @@
 - Moved memo content display out of the in-card draggable drawer to a dedicated panel in the lower section (below review/finish actions).
 - Added a back-side memo control behavior that toggles whether this lower memo panel is raised upward (closer to the card) or lowered (default position beneath actions).
 - Wired `Flashcard` → `Study` state via `onFlipChange` and `onMemoToggle` so memo panel visibility/position follows card side and user toggle actions.
+
+## Session Update (2026-03-29, Card Flip Compatibility Fix)
+
+- Fixed a regression where some mobile/webview environments could fail to render the card back after flip in both Study and Practice modes.
+- Updated 3D card utility CSS (`perspective`, `transform-style`, `backface-visibility`, `rotateY`) to include WebKit-prefixed properties for broader browser compatibility.
+- No review logic/state changes; this is a rendering compatibility fix only.
