@@ -146,3 +146,11 @@
 - Fixed a regression where some mobile/webview environments could fail to render the card back after flip in both Study and Practice modes.
 - Updated 3D card utility CSS (`perspective`, `transform-style`, `backface-visibility`, `rotateY`) to include WebKit-prefixed properties for broader browser compatibility.
 - No review logic/state changes; this is a rendering compatibility fix only.
+
+## Session Update (2026-03-29, Card Back Not Visible Root-Cause Fix)
+
+- Investigated a persistent “flip animation starts but back side never appears” failure on touch devices/webviews.
+- Root cause: 3D rotation was driven through `framer-motion` `rotateY` animation, which is known to be unreliable in some WebKit/webview GPU composition paths even when utility classes set `preserve-3d`/`backface-visibility`.
+- Fix: replaced card-flip transform animation in `src/components/Card.tsx` with explicit inline CSS 3D transform + transition (`transform`/`WebkitTransform`, `transformStyle`/`WebkitTransformStyle`) on the rotating container.
+- Kept all existing study/practice state behavior unchanged (`onFlip`, `onFlipChange`, reset behavior, memo/audio controls).
+- Verified with `npm run lint` and `npm run build`.
