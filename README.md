@@ -90,6 +90,23 @@ Vercel will use:
 - In **Settings**, you can choose between:
   - Manual playback (default)
   - Auto-play when the card back is shown
+- Library now includes two icon-based listening entry points:
+  - **Read & Listen** (book/audio icon)
+  - **Listen** (headphones icon)
+- **Read & Listen** mode is designed for reading full card text while replaying attached audio with:
+  - play/pause, previous/next card
+  - repeat-one toggle
+  - speed control (0.8x / 1.0x / 1.2x / 1.5x)
+  - long-text-friendly independent scroll area
+- **Listen** mode is designed for continuous passive listening over the current library order with:
+  - play/pause, previous/next
+  - loop-all toggle
+  - inter-card gap (0s / 1s / 2s)
+  - automatic skip of cards without audio
+- Non-goals for these modes (intentionally not implemented):
+  - playlist creation/saving/reordering
+  - waveform/sync highlighting
+  - background-audio optimization beyond normal browser behavior
 
 > Note: Audio files are stored in local browser storage as Data URLs. Very large files may exceed storage limits.
 
