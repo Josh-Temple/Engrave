@@ -10,6 +10,16 @@
 
 ## Latest Session Changes
 
+- Added two lightweight listening modes as auxiliary memorization support (without playlist architecture):
+  - **Read & Listen**: full-text reading + per-card audio controls (play/pause, prev/next, repeat-one, speed 0.8/1.0/1.2/1.5).
+  - **Listen**: continuous audio mode across current library order (play/pause, prev/next, loop-all, gap 0/1/2s, auto-skip no-audio cards).
+- Added icon-based entry buttons in Library for these modes:
+  - Book/audio icon for **Read & Listen**
+  - Headphones icon for **Listen**
+- Added new view wiring in `App.tsx` (`readListen` / `listen`) and a dedicated `ListeningModes` component.
+- Read/listen text panel uses long-text-friendly independent scrolling for mobile readability.
+- Audio session cleanup is handled on unmount (pause + timer cleanup) to reduce cross-screen playback leaks.
+
 - Practice Mode card back now shows a top-right copy action that copies `source` + body text to clipboard.
 - Clipboard payload intentionally strips ruby/furigana by joining only raw segment text.
 - Fixed random-order study regression where flipping to back could reshuffle and switch cards before the user rated the current card.
@@ -46,6 +56,10 @@
 - Run `npm run build`
 
 ## Notes for the Next Session
+
+- Current listening modes intentionally reuse library order (`items`) as the playback sequence; there is no saved queue or playlist layer.
+- `Listen` mode currently skips no-audio cards for playback navigation and auto-advance; `Read & Listen` keeps all cards navigable/readable and disables play when a card lacks audio.
+- If “start from this card” is added later, thread an optional item ID into the listening view and initialize `currentIndex` from that ID.
 
 - `settings.reviewOrder` is persisted in Zustand and normalized at hydration/import; any future settings additions should follow the same normalize pattern.
 - Random mode currently shuffles due cards client-side for each due-card set snapshot; ordered mode strictly follows the Library list order.

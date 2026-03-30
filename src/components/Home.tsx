@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useStore } from '../store/useStore';
-import { Plus, BrainCircuit, Settings as SettingsIcon } from 'lucide-react';
+import { Plus, BrainCircuit, Settings as SettingsIcon, BookAudio, Headphones } from 'lucide-react';
 import { View } from '../App';
 import { ItemCard } from './ItemCard';
 import { ConfirmDialog } from './ConfirmDialog';
@@ -47,6 +47,25 @@ export function Home({ onNavigate }: { onNavigate: (v: View, itemId?: string) =>
       </div>
 
       <div className="space-y-4 flex-1">
+        {items.length > 0 && (
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => onNavigate('readListen')}
+              className="h-12 rounded-2xl border border-gray-200 bg-white text-gray-700 text-sm font-medium inline-flex items-center justify-center gap-2 hover:bg-gray-100 transition-colors"
+            >
+              <BookAudio size={16} />
+              Read & Listen
+            </button>
+            <button
+              onClick={() => onNavigate('listen')}
+              className="h-12 rounded-2xl border border-gray-200 bg-white text-gray-700 text-sm font-medium inline-flex items-center justify-center gap-2 hover:bg-gray-100 transition-colors"
+            >
+              <Headphones size={16} />
+              Listen
+            </button>
+          </div>
+        )}
+
         {items.map((item, index) => (
           <ItemCard
             key={item.id}

@@ -4,8 +4,9 @@ import { CreateItem } from './components/CreateItem';
 import { Study } from './components/Study';
 import { EditItem } from './components/EditItem';
 import { Settings } from './components/Settings';
+import { ListeningModes } from './components/ListeningModes';
 
-export type View = 'home' | 'create' | 'study' | 'edit' | 'practice' | 'settings';
+export type View = 'home' | 'create' | 'study' | 'edit' | 'practice' | 'settings' | 'readListen' | 'listen';
 
 export default function App() {
   const [view, setView] = useState<View>('home');
@@ -24,6 +25,8 @@ export default function App() {
       {view === 'practice' && activeItemId && <Study onNavigate={navigate} practiceItemId={activeItemId} />}
       {view === 'edit' && activeItemId && <EditItem itemId={activeItemId} onNavigate={navigate} />}
       {view === 'settings' && <Settings onNavigate={navigate} />}
+      {view === 'readListen' && <ListeningModes onNavigate={navigate} mode="readListen" />}
+      {view === 'listen' && <ListeningModes onNavigate={navigate} mode="listen" />}
     </div>
   );
 }
