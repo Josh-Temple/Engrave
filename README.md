@@ -87,6 +87,9 @@ Vercel will use:
 - On the study card back side, a **Play Audio** button is shown when audio exists.
 - Memo is hidden while the card front is visible. When the study card back is shown, memo content appears in the lower section beneath answer/finish actions by default.
 - Memo controls use up/down arrows, and tapping the card-back memo control raises/lowers the memo panel to bring it closer to the card text when needed.
+- When a card is flipped to the back side, the screen now auto-scrolls to the top to keep the reading start position stable.
+- Memo panel height on the back side is now expanded to a tall scrollable area (roughly card-sized) for easier long-note reading.
+- Returning to the Library from Edit or Practice now restores your previous Library scroll position.
 - In **Settings**, you can choose between:
   - Manual playback (default)
   - Auto-play when the card back is shown

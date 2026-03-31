@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { useStore } from '../store/useStore';
 import { Plus, BrainCircuit, Settings as SettingsIcon, BookAudio, Headphones } from 'lucide-react';
 import { View } from '../App';
@@ -6,6 +6,7 @@ import { ItemCard } from './ItemCard';
 import { ConfirmDialog } from './ConfirmDialog';
 
 export function Home({ onNavigate }: { onNavigate: (v: View, itemId?: string) => void }) {
+  const HOME_SCROLL_KEY = 'engrave:home-scroll-y';
   const items = useStore((s) => s.items);
   const getDueItems = useStore((s) => s.getDueItems);
   const deleteItem = useStore((s) => s.deleteItem);
@@ -14,6 +15,19 @@ export function Home({ onNavigate }: { onNavigate: (v: View, itemId?: string) =>
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
   const dueItems = getDueItems();
+
+  useLayoutEffect(() => {
+    const storedScrollY = Number(sessionStorage.getItem(HOME_SCROLL_KEY) ?? '0');
+    if (Number.isFinite(storedScrollY) && storedScrollY > 0) {
+      window.scrollTo({ top: storedScrollY, left: 0, behavior: 'auto' });
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      sessionStorage.setItem(HOME_SCROLL_KEY, String(window.scrollY));
+    };
+  }, []);
 
   const handleDeleteConfirm = () => {
     if (itemToDelete) {

@@ -133,6 +133,12 @@ export function Study({ onNavigate, practiceItemId }: { onNavigate: (v: View) =>
   const [hintStage, setHintStage] = useState<HintStage>(0);
   const reverseRef = useRef<Record<string, boolean>>({});
 
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  };
+
   if (currentItem && currentItem.level === 5 && reverseRef.current[currentItem.id] === undefined) {
     reverseRef.current[currentItem.id] = Math.random() > 0.5;
   }
@@ -223,6 +229,7 @@ export function Study({ onNavigate, practiceItemId }: { onNavigate: (v: View) =>
                 onFlip={() => setHasFlipped(true)}
                 onFlipChange={(isBack) => {
                   setIsBackVisible(isBack);
+                  if (isBack) scrollToTop();
                   if (!isBack) setIsMemoLifted(false);
                 }}
                 resetKey={`${currentItem.id}:${hintStage}`}
@@ -325,12 +332,12 @@ export function Study({ onNavigate, practiceItemId }: { onNavigate: (v: View) =>
             animate={{ opacity: 1, y: isMemoLifted ? -48 : 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 28 }}
             className={cn(
-              'w-full max-w-sm rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm',
+              'w-full max-w-sm h-[min(65vh,28rem)] rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm',
               isMemoLifted ? 'mb-2' : 'mt-2'
             )}
           >
             <div className="text-xs font-bold tracking-wider text-gray-500 uppercase mb-2">Memo</div>
-            <p className="text-sm leading-relaxed text-gray-700 whitespace-pre-wrap max-h-28 overflow-y-auto overscroll-contain">
+            <p className="text-sm leading-relaxed text-gray-700 whitespace-pre-wrap h-full overflow-y-auto overscroll-contain">
               {currentItem.note}
             </p>
           </motion.div>
