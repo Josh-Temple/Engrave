@@ -10,6 +10,12 @@
 
 ## Latest Session Changes
 
+- Improved Study back-side readability for memo cards:
+  - On card flip to back, the screen is forced to scroll to top so users always start reading from the beginning.
+  - Memo panel height was expanded to a tall, scrollable container (roughly card-sized) instead of the previous compact area.
+- Improved Library navigation continuity:
+  - Home (Library) now saves/restores scroll position via session storage, so returning from Edit or Practice returns users to their prior card-list position.
+
 - Added two lightweight listening modes as auxiliary memorization support (without playlist architecture):
   - **Read & Listen**: full-text reading + per-card audio controls (play/pause, prev/next, repeat-one, speed 0.8/1.0/1.2/1.5).
   - **Listen**: continuous audio mode across current library order (play/pause, prev/next, loop-all, gap 0/1/2s, auto-skip no-audio cards).
