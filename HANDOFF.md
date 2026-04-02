@@ -182,3 +182,11 @@
 - Fix: in `src/components/Card.tsx`, added a ref to track the latest `onFlipChange` and changed the reset effect to depend on `resetKey` only. This preserves intended resets while preventing accidental reset loops from callback identity changes.
 - Result: tap/flip now keeps back face visible as expected while existing reset flows (card change/hint-stage reset) remain intact.
 - Verified with `npm run lint` and `npm run build`.
+
+## Session Update (2026-04-02, WAV Audio Support)
+
+- Expanded audio upload support from MP3-only to **MP3/WAV**.
+- Updated `src/lib/audioStorage.ts` validation logic to accept WAV MIME types/extensions in addition to MP3.
+- Updated Supabase upload path generation to preserve file extension (`.mp3` or `.wav`) instead of forcing `.mp3`.
+- Updated Create/Edit file input accept filters and labels to reflect MP3/WAV support.
+- Updated README audio docs to reflect MP3/WAV support in both local and Supabase modes.

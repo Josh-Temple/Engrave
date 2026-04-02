@@ -46,7 +46,7 @@ Vercel will use:
 ## Create Flow
 
 - **Quick Add** is the default path for creating cards from raw text without writing JSON.
-- Choose a language, pick a segmentation mode (**Word**, **Character**, **Line**, or **Smart**), preview the generated tokens, lightly adjust them in the built-in token editor, optionally attach MP3 audio, and save.
+- Choose a language, pick a segmentation mode (**Word**, **Character**, **Line**, or **Smart**), preview the generated tokens, lightly adjust them in the built-in token editor, optionally attach MP3/WAV audio, and save.
 - Quick Add now also supports an optional **Memo** field for supplementary context (translation, interpretation, etc.).
 - The Quick Add token editor is intentionally minimal: tap a token to **edit** text, manually add or clear an optional **reading** (ruby / pinyin), **split**, **merge left/right**, or **reset to the generated result** before saving.
 - Readings continue to use the existing `Segment = [text, reading?]` model. For safety, split operations clear readings on both resulting tokens, and merge operations clear the merged reading instead of guessing.
@@ -78,7 +78,7 @@ Vercel will use:
 
 ## Audio per Card
 
-- You can now attach an **MP3** audio file to each card during creation/edit.
+- You can now attach an **MP3/WAV** audio file to each card during creation/edit.
 - Audio uploads now include a size guard for local-storage safety (current threshold: **700KB** per file). If exceeded, the UI shows guidance instead of attempting a save that is likely to hit browser storage quota.
 - Audio processing now goes through `src/lib/audioStorage.ts`, which centralizes provider selection (`VITE_AUDIO_STORAGE_MODE`) so future migration from local Data URL storage to Supabase Storage can be implemented in one place.
 - The data model now keeps an `audioUrl` field (while preserving `audioDataUrl` compatibility) to simplify a later switch to remote URL-based storage.
@@ -120,7 +120,7 @@ Vercel will use:
   - `VITE_SUPABASE_URL`
   - `VITE_SUPABASE_ANON_KEY`
 - Create a **public** Supabase Storage bucket named `card-audio` before uploading.
-- In Supabase mode, uploaded MP3 files are stored in `card-audio` and `audioUrl` is saved as a public URL.
+- In Supabase mode, uploaded MP3/WAV files are stored in `card-audio` and `audioUrl` is saved as a public URL.
 - This integration affects **audio file storage only**. Card content, review history, and other app data remain local-first in browser storage.
 
 #### Troubleshooting Supabase Audio Uploads
@@ -152,7 +152,7 @@ with check (bucket_id = 'card-audio');
   - Create `card-audio` bucket and mark it public
   - Add Storage RLS upload policy for `anon`
 - **This app code already does:**
-  - Upload MP3 files to `card-audio` when `VITE_AUDIO_STORAGE_MODE=supabase`
+  - Upload MP3/WAV files to `card-audio` when `VITE_AUDIO_STORAGE_MODE=supabase`
   - Store returned public URL into `audioUrl`
   - Keep card/review data local-first in browser storage
 
@@ -162,7 +162,7 @@ with check (bucket_id = 'card-audio');
 2. Open Supabase → **SQL Editor** → run the `insert` policy SQL above.
 3. In app `.env.local`, set `VITE_AUDIO_STORAGE_MODE=supabase`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_ANON_KEY`.
 4. Restart dev server (`npm run dev`) or redeploy if on Vercel.
-5. Upload a small MP3 from Create/Edit screen.
+5. Upload a small MP3 or WAV file from Create/Edit screen.
 6. If it fails with RLS-related text, revisit step 2; if it fails with missing env text, revisit step 3.
 
 ## Study Flow
