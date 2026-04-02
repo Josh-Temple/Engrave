@@ -977,7 +977,7 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
         <div className="bg-white border border-gray-100 rounded-2xl p-4 space-y-3">
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
-              Audio (MP3)
+              Audio (MP3/WAV)
             </p>
             {audioDataUrl && (
               <button
@@ -991,7 +991,7 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
           </div>
           <input
             type="file"
-            accept="audio/mpeg,audio/mp3,.mp3"
+            accept="audio/mpeg,audio/mp3,audio/wav,audio/x-wav,.mp3,.wav"
             onChange={(e) => handleAudioUpload(e.target.files?.[0])}
             className="block w-full text-sm text-gray-500 file:mr-3 file:px-3 file:py-2 file:rounded-xl file:border-0 file:bg-gray-900 file:text-white hover:file:bg-gray-800"
           />
