@@ -106,6 +106,7 @@ Vercel will use:
   - loop-all toggle
   - inter-card gap (0s / 1s / 2s)
   - automatic skip of cards without audio
+- When a card has a memo (`note`), both **Read & Listen** and **Listen** now show that memo in a dedicated panel beneath the playback control buttons.
 - Non-goals for these modes (intentionally not implemented):
   - playlist creation/saving/reordering
   - waveform/sync highlighting

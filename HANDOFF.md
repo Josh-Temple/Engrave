@@ -10,6 +10,10 @@
 
 ## Latest Session Changes
 
+- Listening mode memo visibility update:
+  - In both **Read & Listen** and **Listen** views, the current card memo (`note`) is now rendered in a dedicated panel directly beneath playback control buttons when present.
+  - This keeps memo context available without leaving listening flows.
+
 - Improved Study back-side readability for memo cards:
   - On card flip to back, the screen is forced to scroll to top so users always start reading from the beginning.
   - Memo panel height was expanded to a tall, scrollable container (roughly card-sized) instead of the previous compact area.
