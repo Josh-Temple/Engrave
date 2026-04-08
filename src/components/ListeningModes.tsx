@@ -310,6 +310,12 @@ export function ListeningModes({ onNavigate, mode }: { onNavigate: (v: View) => 
               {mode === 'listen' && !hasAnyAudio && (
                 <p className="text-xs text-amber-600">No audio files found. Attach MP3 files from Create/Edit to use Listen mode.</p>
               )}
+              {currentItem?.note && (
+                <div className="rounded-2xl border border-gray-200 bg-gray-50 p-3">
+                  <div className="text-[11px] font-bold tracking-wider text-gray-500 uppercase mb-1">Memo</div>
+                  <p className="text-sm leading-relaxed text-gray-700 whitespace-pre-wrap">{currentItem.note}</p>
+                </div>
+              )}
               {playbackError && <p className="text-xs text-red-500">{playbackError}</p>}
             </div>
           </>
