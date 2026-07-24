@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Save } from 'lucide-react';
 import { View } from '../App';
-import { prepareAudioForStorage } from '../lib/audioStorage';
+import { deleteStoredAudio, prepareAudioForStorage } from '../lib/audioStorage';
 import { useStore, Segment } from '../store/useStore';
 
 export function EditItem({ itemId, onNavigate }: { itemId: string; onNavigate: (v: View) => void }) {
@@ -13,20 +13,27 @@ export function EditItem({ itemId, onNavigate }: { itemId: string; onNavigate: (
   const [error, setError] = useState('');
   const [audioDataUrl, setAudioDataUrl] = useState<string>('');
   const [audioFileName, setAudioFileName] = useState('');
+  const [audioStoragePath, setAudioStoragePath] = useState<string | undefined>();
+  const pendingUploadPathRef = useRef<string | undefined>(undefined);
+  const audioCommittedRef = useRef(false);
   const [memo, setMemo] = useState('');
 
   useEffect(() => {
     if (item) {
       setJsonInput(JSON.stringify({
         source: item.source,
-        segments: item.segments,
-        note: item.note
+        segments: item.segments
       }, null, 2));
       setMemo(item.note || '');
       setAudioDataUrl(item.audioUrl || item.audioDataUrl || '');
       setAudioFileName(item.audioUrl || item.audioDataUrl ? 'Current audio' : '');
+      setAudioStoragePath(item.audioStoragePath);
     }
   }, [item]);
+
+  useEffect(() => () => {
+    if (!audioCommittedRef.current) void deleteStoredAudio(pendingUploadPathRef.current).catch(console.error);
+  }, []);
 
   if (!item) return null;
 
@@ -42,9 +49,6 @@ export function EditItem({ itemId, onNavigate }: { itemId: string; onNavigate: (
       if (!Array.isArray(parsed.segments)) {
         throw new Error('Invalid JSON: "segments" must be an array.');
       }
-      if (parsed.note !== undefined && typeof parsed.note !== 'string') {
-        throw new Error('Invalid JSON: "note" must be a string if provided.');
-      }
       
       // Basic validation of segments
       for (const seg of parsed.segments) {
@@ -57,10 +61,12 @@ export function EditItem({ itemId, onNavigate }: { itemId: string; onNavigate: (
         updateItem(itemId, {
           source: parsed.source,
           segments: parsed.segments as Segment[],
-          note: memo.trim() || parsed.note?.trim() || undefined,
+          note: memo.trim() || undefined,
           audioUrl: audioDataUrl || undefined,
-          audioDataUrl: audioDataUrl || undefined
+          audioStoragePath,
         });
+        audioCommittedRef.current = true;
+        if (item.audioStoragePath !== audioStoragePath) void deleteStoredAudio(item.audioStoragePath).catch(console.error);
         onNavigate('home');
       } catch (error) {
         console.error(error);
@@ -68,8 +74,8 @@ export function EditItem({ itemId, onNavigate }: { itemId: string; onNavigate: (
           'Failed to save card. Browser storage quota was exceeded. Please remove or shorten audio files, then try again.'
         );
       }
-    } catch (e: any) {
-      setError(e.message || 'Invalid JSON format');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Invalid JSON format');
     }
   };
 
@@ -78,8 +84,12 @@ export function EditItem({ itemId, onNavigate }: { itemId: string; onNavigate: (
   const handleAudioUpload = async (file?: File) => {
     if (!file) return;
     try {
+      await deleteStoredAudio(pendingUploadPathRef.current);
+      pendingUploadPathRef.current = undefined;
       const preparedAudio = await prepareAudioForStorage(file);
-      setAudioDataUrl(preparedAudio);
+      setAudioDataUrl(preparedAudio.url);
+      setAudioStoragePath(preparedAudio.storagePath);
+      pendingUploadPathRef.current = preparedAudio.storagePath;
       setAudioFileName(file.name);
       setError('');
     } catch (error) {
@@ -89,7 +99,10 @@ export function EditItem({ itemId, onNavigate }: { itemId: string; onNavigate: (
   };
 
   const clearAudio = () => {
+    void deleteStoredAudio(pendingUploadPathRef.current).catch(console.error);
+    pendingUploadPathRef.current = undefined;
     setAudioDataUrl('');
+    setAudioStoragePath(undefined);
     setAudioFileName('');
   };
 
@@ -143,9 +156,7 @@ export function EditItem({ itemId, onNavigate }: { itemId: string; onNavigate: (
           />
           {audioFileName && <p className="text-sm text-gray-500 truncate">Selected: {audioFileName}</p>}
           {audioDataUrl && (
-            <audio controls className="w-full">
-              <source src={audioDataUrl} type="audio/mpeg" />
-            </audio>
+            <audio controls src={audioDataUrl} className="w-full" />
           )}
         </div>
 

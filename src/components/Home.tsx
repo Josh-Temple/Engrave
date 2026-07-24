@@ -4,6 +4,7 @@ import { Plus, BrainCircuit, Settings as SettingsIcon, BookAudio, Headphones } f
 import { View } from '../App';
 import { ItemCard } from './ItemCard';
 import { ConfirmDialog } from './ConfirmDialog';
+import { deleteStoredAudio } from '../lib/audioStorage';
 
 export function Home({ onNavigate }: { onNavigate: (v: View, itemId?: string) => void }) {
   const HOME_SCROLL_KEY = 'engrave:home-scroll-y';
@@ -31,7 +32,9 @@ export function Home({ onNavigate }: { onNavigate: (v: View, itemId?: string) =>
 
   const handleDeleteConfirm = () => {
     if (itemToDelete) {
+      const storagePath = items.find((item) => item.id === itemToDelete)?.audioStoragePath;
       deleteItem(itemToDelete);
+      void deleteStoredAudio(storagePath).catch((error: unknown) => console.error(error));
       setItemToDelete(null);
     }
   };

@@ -8,6 +8,7 @@ import { MemoryItem, useStore } from '../store/useStore';
 import { View } from '../App';
 import { escapeHtml } from '../lib/textSafety';
 import 'katex/dist/katex.min.css';
+import { findNextPlayableIndex, getAudioSource, shouldContinueLoop } from '../lib/listening';
 
 type ListeningModeType = 'readListen' | 'listen';
 
@@ -24,26 +25,9 @@ function buildFullText(item: MemoryItem): string {
   return item.segments.map(([word, ruby]) => formatRubyText(word, ruby)).join('');
 }
 
-function getAudioSource(item?: MemoryItem): string | undefined {
-  if (!item) return undefined;
-  return item.audioUrl || item.audioDataUrl;
-}
-
-function findNextPlayableIndex(items: MemoryItem[], fromIndex: number, direction: 1 | -1): number {
-  if (items.length === 0) return -1;
-  let cursor = fromIndex;
-  for (let i = 0; i < items.length; i += 1) {
-    cursor = (cursor + direction + items.length) % items.length;
-    if (getAudioSource(items[cursor])) {
-      return cursor;
-    }
-  }
-  return -1;
-}
-
 export function ListeningModes({ onNavigate, mode }: { onNavigate: (v: View) => void; mode: ListeningModeType }) {
   const items = useStore((s) => s.items);
-  const orderedItems = useMemo(() => items, [items]);
+  const orderedItems = items;
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -56,6 +40,10 @@ export function ListeningModes({ onNavigate, mode }: { onNavigate: (v: View) => 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const gapTimerRef = useRef<number | null>(null);
   const autoPlayOnIndexChangeRef = useRef(false);
+  const clearGapTimer = () => {
+    if (gapTimerRef.current !== null) window.clearTimeout(gapTimerRef.current);
+    gapTimerRef.current = null;
+  };
 
   useEffect(() => {
     if (currentIndex >= orderedItems.length && orderedItems.length > 0) {
@@ -68,6 +56,7 @@ export function ListeningModes({ onNavigate, mode }: { onNavigate: (v: View) => 
   const hasAnyAudio = useMemo(() => orderedItems.some((item) => Boolean(getAudioSource(item))), [orderedItems]);
 
   const stopPlayback = () => {
+    clearGapTimer();
     if (!audioRef.current) return;
     audioRef.current.pause();
     audioRef.current.currentTime = 0;
@@ -76,9 +65,7 @@ export function ListeningModes({ onNavigate, mode }: { onNavigate: (v: View) => 
 
   useEffect(() => {
     return () => {
-      if (gapTimerRef.current) {
-        window.clearTimeout(gapTimerRef.current);
-      }
+      clearGapTimer();
       if (audioRef.current) {
         audioRef.current.pause();
       }
@@ -118,6 +105,7 @@ export function ListeningModes({ onNavigate, mode }: { onNavigate: (v: View) => 
 
     stopPlayback();
     if (isPlaying) {
+      clearGapTimer();
       autoPlayOnIndexChangeRef.current = true;
     }
     setCurrentIndex(nextIndex);
@@ -154,6 +142,7 @@ export function ListeningModes({ onNavigate, mode }: { onNavigate: (v: View) => 
     if (mode === 'listen' && !currentAudioSrc) {
       const firstPlayableIndex = findNextPlayableIndex(orderedItems, currentIndex, 1);
       if (firstPlayableIndex !== -1 && firstPlayableIndex !== currentIndex) {
+        autoPlayOnIndexChangeRef.current = true;
         setCurrentIndex(firstPlayableIndex);
         return;
       }
@@ -182,9 +171,14 @@ export function ListeningModes({ onNavigate, mode }: { onNavigate: (v: View) => 
         return;
       }
 
-      const wrappedToStart = nextPlayable <= currentIndex;
-      if (wrappedToStart && !loopAll) {
+      if (!shouldContinueLoop(currentIndex, nextPlayable, loopAll)) {
         setIsPlaying(false);
+        return;
+      }
+
+      if (nextPlayable === currentIndex) {
+        if (audioRef.current) audioRef.current.currentTime = 0;
+        void startCurrent();
         return;
       }
 
@@ -195,6 +189,7 @@ export function ListeningModes({ onNavigate, mode }: { onNavigate: (v: View) => 
     if (gapSeconds > 0) {
       setIsPlaying(false);
       gapTimerRef.current = window.setTimeout(() => {
+        gapTimerRef.current = null;
         scheduleNext();
       }, gapSeconds * 1000);
       return;

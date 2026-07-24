@@ -28,7 +28,7 @@ export function Settings({ onNavigate }: { onNavigate: (v: View) => void }) {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `zencards-backup-${formatTimestamp(new Date())}.json`;
+    anchor.download = `engrave-backup-${formatTimestamp(new Date())}.json`;
     anchor.click();
     URL.revokeObjectURL(url);
     setBackupMessage(`Backup downloaded with ${payload.app.items.length} card${payload.app.items.length === 1 ? '' : 's'}.`);
@@ -52,7 +52,7 @@ export function Settings({ onNavigate }: { onNavigate: (v: View) => void }) {
       setBackupMessage(`Backup restored from ${file.name}.`);
     } catch (error) {
       console.error(error);
-      setBackupError('Failed to restore backup. Please choose a valid ZenCards backup JSON file.');
+      setBackupError('Failed to restore backup. Please choose a valid Engrave backup JSON file.');
     }
   };
 

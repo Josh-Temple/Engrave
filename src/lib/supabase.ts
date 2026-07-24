@@ -17,6 +17,7 @@ type SupabaseStorageBucket = {
     options: { cacheControl: string; contentType: string; upsert: boolean },
   ) => Promise<StorageUploadResult>;
   getPublicUrl: (path: string) => StoragePublicUrlResult;
+  remove: (paths: string[]) => Promise<StorageUploadResult>;
 };
 
 type SupabaseClient = {
@@ -69,6 +70,15 @@ const createStorageBucketClient = (bucket: string): SupabaseStorageBucket => ({
     const safePath = encodePath(path);
     const publicUrl = `${trimTrailingSlash(supabaseUrl)}/storage/v1/object/public/${bucket}/${safePath}`;
     return { data: { publicUrl } };
+  },
+  remove: async (paths) => {
+    const endpoint = `${trimTrailingSlash(supabaseUrl)}/storage/v1/object/${bucket}`;
+    const response = await fetch(endpoint, {
+      method: 'DELETE',
+      headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ prefixes: paths }),
+    });
+    return response.ok ? { error: null } : { error: { message: `HTTP ${response.status}` } };
   },
 });
 

@@ -1,6 +1,7 @@
 export type AudioStorageMode = 'local' | 'supabase';
 
-export const LOCAL_MAX_AUDIO_FILE_SIZE_BYTES = 700 * 1024;
+export const MAX_AUDIO_FILE_SIZE_BYTES = 700 * 1024;
+export const LOCAL_MAX_AUDIO_FILE_SIZE_BYTES = MAX_AUDIO_FILE_SIZE_BYTES;
 const SUPABASE_AUDIO_BUCKET = 'card-audio';
 const SUPPORTED_AUDIO_EXTENSIONS = ['mp3', 'wav'] as const;
 const SUPPORTED_AUDIO_MIME_TYPES = new Set([
@@ -25,6 +26,9 @@ const readFileAsDataUrl = (file: File): Promise<string> =>
   });
 
 const validateAudioFile = (file: File) => {
+  if (file.size > MAX_AUDIO_FILE_SIZE_BYTES) {
+    throw new Error('Audio file is too large. Please use an MP3/WAV file smaller than 700KB.');
+  }
   const extension = file.name.split('.').pop()?.toLowerCase();
   const isSupportedExtension = extension
     ? SUPPORTED_AUDIO_EXTENSIONS.includes(
@@ -72,7 +76,7 @@ const buildAudioPath = (file: File): string => {
   return `cards/${baseName}-${uniqueId}.${extension}`;
 };
 
-const prepareSupabaseAudio = async (file: File): Promise<string> => {
+const prepareSupabaseAudio = async (file: File): Promise<{ url: string; storagePath: string }> => {
   const { getSupabaseClient } = await import('./supabase');
   const supabase = await getSupabaseClient();
   const path = buildAudioPath(file);
@@ -95,14 +99,24 @@ const prepareSupabaseAudio = async (file: File): Promise<string> => {
     throw new Error('Failed to retrieve a public URL for the uploaded audio.');
   }
 
-  return data.publicUrl;
+  return { url: data.publicUrl, storagePath: path };
 };
 
-export const prepareAudioForStorage = async (file: File): Promise<string> => {
+export interface PreparedAudio { url: string; storagePath?: string }
+
+export const prepareAudioForStorage = async (file: File): Promise<PreparedAudio> => {
   validateAudioFile(file);
   const mode = getAudioStorageMode();
   if (mode === 'supabase') {
     return prepareSupabaseAudio(file);
   }
-  return prepareLocalAudio(file);
+  return { url: await prepareLocalAudio(file) };
+};
+
+/** Delete only explicitly tracked Supabase objects; local and legacy URLs are left untouched. */
+export const deleteStoredAudio = async (storagePath?: string): Promise<void> => {
+  if (!storagePath) return;
+  const { getSupabaseClient } = await import('./supabase');
+  const result = await (await getSupabaseClient()).storage.from(SUPABASE_AUDIO_BUCKET).remove([storagePath]);
+  if (result.error) throw new Error(`Failed to delete audio from Supabase: ${result.error.message}`);
 };
