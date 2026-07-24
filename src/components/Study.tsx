@@ -6,6 +6,7 @@ import { ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { escapeHtml } from '../lib/textSafety';
 import { cn } from '../lib/utils';
+import { rateSessionCard, ReviewSessionQueue } from '../lib/reviewSession';
 
 type HintStage = 0 | 1 | 2;
 
@@ -124,8 +125,13 @@ export function Study({ onNavigate, practiceItemId }: { onNavigate: (v: View) =>
     return listedDueItems;
   }, [isPractice, listedDueItems, randomDueItemIds, reviewOrder]);
   const practiceItem = isPractice ? items.find((i) => i.id === practiceItemId) : null;
-
-  const currentItem = isPractice ? practiceItem : dueItems[0];
+  const [sessionQueue, setSessionQueue] = useState<ReviewSessionQueue | null>(null);
+  useEffect(() => {
+    if (!isPractice && sessionQueue === null && dueItems.length > 0) {
+      setSessionQueue({ pending: dueItems.map((item) => item.id), againCounts: {} });
+    }
+  }, [dueItems, isPractice, sessionQueue]);
+  const currentItem = isPractice ? practiceItem : items.find((item) => item.id === sessionQueue?.pending[0]);
   const [practiceDone, setPracticeDone] = useState(false);
   const [hasFlipped, setHasFlipped] = useState(false);
   const [isBackVisible, setIsBackVisible] = useState(false);
@@ -161,6 +167,7 @@ export function Study({ onNavigate, practiceItemId }: { onNavigate: (v: View) =>
     }
 
     reviewItem(currentItem.id, rating);
+    setSessionQueue((queue) => queue ? rateSessionCard(queue, currentItem.id, rating) : queue);
   };
 
   const getFrontText = () => {
@@ -207,7 +214,7 @@ export function Study({ onNavigate, practiceItemId }: { onNavigate: (v: View) =>
           <ArrowLeft size={24} />
         </button>
         <span className="text-sm font-medium text-gray-400">
-          {isPractice ? 'Practice Mode' : `${dueItems.length} left`}
+          {isPractice ? 'Practice Mode' : `${sessionQueue?.pending.length ?? dueItems.length} left`}
         </span>
       </div>
 

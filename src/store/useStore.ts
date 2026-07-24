@@ -17,6 +17,9 @@ export interface MemoryItem {
   repetitions: number;
   createdAt: number;
   audioUrl?: string;
+  /** Supabase object path; absent for local Data URLs and legacy records. */
+  audioStoragePath?: string;
+  /** @deprecated Read-only migration input. Never persisted by current versions. */
   audioDataUrl?: string;
   note?: string;
 }
@@ -38,7 +41,7 @@ export interface BackupPayload {
 interface AppState {
   items: MemoryItem[];
   settings: AppSettings;
-  addItem: (source: string, segments: Segment[], audioUrl?: string, note?: string) => void;
+  addItem: (source: string, segments: Segment[], audioUrl?: string, note?: string, audioStoragePath?: string) => void;
   deleteItem: (id: string) => void;
   updateItem: (id: string, updates: Partial<MemoryItem>) => void;
   reviewItem: (id: string, rating: ReviewRating) => void;
@@ -57,7 +60,7 @@ const defaultSettings = (): AppSettings => ({
   reviewOrder: 'listed',
 });
 
-const normalizeItem = (item: unknown): MemoryItem | null => {
+export const normalizeItem = (item: unknown): MemoryItem | null => {
   if (!item || typeof item !== 'object') return null;
 
   const candidate = item as Record<string, unknown>;
@@ -84,7 +87,7 @@ const normalizeItem = (item: unknown): MemoryItem | null => {
         : typeof candidate.audioDataUrl === 'string'
           ? candidate.audioDataUrl
           : undefined,
-    audioDataUrl: typeof candidate.audioDataUrl === 'string' ? candidate.audioDataUrl : undefined,
+    audioStoragePath: typeof candidate.audioStoragePath === 'string' ? candidate.audioStoragePath : undefined,
     note: normalizeOptionalText(candidate.note),
   };
 };
@@ -107,7 +110,7 @@ const normalizeSettings = (settings: unknown): AppSettings => {
   };
 };
 
-const normalizeBackupPayload = (payload: unknown): BackupPayload => {
+export const normalizeBackupPayload = (payload: unknown): BackupPayload => {
   if (!payload || typeof payload !== 'object') {
     throw new Error('Backup file is invalid.');
   }
@@ -147,7 +150,7 @@ export const useStore = create<AppState>()(
       items: [],
       settings: defaultSettings(),
 
-      addItem: (source, segments, audioUrl, note) => {
+      addItem: (source, segments, audioUrl, note, audioStoragePath) => {
         const normalizedSource = normalizeText(source);
         const normalizedSegments = sanitizeSegments(segments);
         if (!normalizedSource || !normalizedSegments || normalizedSegments.length === 0) {
@@ -165,7 +168,7 @@ export const useStore = create<AppState>()(
           repetitions: 0,
           createdAt: Date.now(),
           audioUrl,
-          audioDataUrl: audioUrl,
+          audioStoragePath,
           note: normalizeOptionalText(note),
         };
         set((state) => ({ items: [newItem, ...state.items] }));
@@ -209,11 +212,12 @@ export const useStore = create<AppState>()(
         }
 
         const normalizedUpdates: Partial<MemoryItem> = { ...updates };
+        delete normalizedUpdates.audioDataUrl;
         if (updates.source !== undefined) {
-          normalizedUpdates.source = normalizedSource;
+          normalizedUpdates.source = normalizedSource ?? undefined;
         }
         if (updates.segments !== undefined) {
-          normalizedUpdates.segments = normalizedSegments;
+          normalizedUpdates.segments = normalizedSegments ?? undefined;
         }
         if (updates.note !== undefined) {
           normalizedUpdates.note = normalizeOptionalText(updates.note);
@@ -273,7 +277,7 @@ export const useStore = create<AppState>()(
         exportedAt: new Date().toISOString(),
         schemaVersion: STORAGE_VERSION,
         app: {
-          items: get().items,
+          items: get().items.map(({ audioDataUrl: _legacyAudio, ...item }) => item),
           settings: get().settings,
         },
       }),
@@ -290,7 +294,7 @@ export const useStore = create<AppState>()(
       name: STORAGE_KEY,
       version: STORAGE_VERSION,
       partialize: (state) => ({
-        items: state.items,
+        items: state.items.map(({ audioDataUrl: _legacyAudio, ...item }) => item),
         settings: state.settings,
       }),
       migrate: (persistedState) => {

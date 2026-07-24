@@ -1,4 +1,4 @@
-# ZenCards UI & Design Guidelines
+# Engrave UI & Design Guidelines
 
 This document outlines the core design principles, UI patterns, and aesthetic direction for the application.
 

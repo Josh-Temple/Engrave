@@ -17,7 +17,7 @@ import {
   QuickAddLanguage,
   SegmentationMode,
 } from "../lib/segmentText";
-import { prepareAudioForStorage } from "../lib/audioStorage";
+import { deleteStoredAudio, prepareAudioForStorage } from "../lib/audioStorage";
 import { useStore, Segment } from "../store/useStore";
 
 const JSON_TEMPLATE = `{
@@ -149,6 +149,13 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
   const [copiedTemplate, setCopiedTemplate] = useState(false);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [audioDataUrl, setAudioDataUrl] = useState<string>("");
+  const [audioStoragePath, setAudioStoragePath] = useState<string | undefined>();
+  const uploadedPathRef = useRef<string | undefined>(undefined);
+  const audioCommittedRef = useRef(false);
+
+  useEffect(() => () => {
+    if (!audioCommittedRef.current) void deleteStoredAudio(uploadedPathRef.current).catch(console.error);
+  }, []);
   const [audioFileName, setAudioFileName] = useState("");
   const [memo, setMemo] = useState("");
   const [editableSegments, setEditableSegments] = useState<Segment[]>([]);
@@ -253,7 +260,9 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
         finalQuickSegments,
         audioDataUrl || undefined,
         memo.trim() || undefined,
+        audioStoragePath,
       );
+      audioCommittedRef.current = true;
       onNavigate("home");
     } catch (error) {
       console.error(error);
@@ -293,7 +302,9 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
           parsed.segments as Segment[],
           audioDataUrl || undefined,
           parsed.note?.trim() || undefined,
+          audioStoragePath,
         );
+        audioCommittedRef.current = true;
         onNavigate("home");
       } catch (error) {
         console.error(error);
@@ -301,8 +312,8 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
           "Failed to save card. Browser storage quota was exceeded. Please remove or shorten audio files, then try again.",
         );
       }
-    } catch (e: any) {
-      setError(e.message || "Invalid JSON format");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Invalid JSON format");
     }
   };
 
@@ -318,8 +329,12 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
   const handleAudioUpload = async (file?: File) => {
     if (!file) return;
     try {
+      await deleteStoredAudio(uploadedPathRef.current);
+      uploadedPathRef.current = undefined;
       const preparedAudio = await prepareAudioForStorage(file);
-      setAudioDataUrl(preparedAudio);
+      setAudioDataUrl(preparedAudio.url);
+      setAudioStoragePath(preparedAudio.storagePath);
+      uploadedPathRef.current = preparedAudio.storagePath;
       setAudioFileName(file.name);
       setError("");
     } catch (error) {
@@ -329,7 +344,10 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
   };
 
   const clearAudio = () => {
+    void deleteStoredAudio(uploadedPathRef.current).catch(console.error);
+    uploadedPathRef.current = undefined;
     setAudioDataUrl("");
+    setAudioStoragePath(undefined);
     setAudioFileName("");
   };
 
@@ -1001,9 +1019,7 @@ export function CreateItem({ onNavigate }: { onNavigate: (v: View) => void }) {
             </p>
           )}
           {audioDataUrl && (
-            <audio controls className="w-full">
-              <source src={audioDataUrl} type="audio/mpeg" />
-            </audio>
+            <audio controls src={audioDataUrl} className="w-full" />
           )}
         </div>
       </div>

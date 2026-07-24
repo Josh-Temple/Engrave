@@ -194,3 +194,14 @@
 - Updated Supabase upload path generation to preserve file extension (`.mp3` or `.wav`) instead of forcing `.mp3`.
 - Updated Create/Edit file input accept filters and labels to reflect MP3/WAV support.
 - Updated README audio docs to reflect MP3/WAV support in both local and Supabase modes.
+
+## Stability and security pass (2026-07-24)
+
+- Removed Gemini client injection and unused AI/server dependencies; the package is now named `engrave`.
+- Kept `zencards-storage-v4` intentionally for compatibility. Hydration/import migrates legacy `audioDataUrl` to `audioUrl`; persistence/export strips the legacy duplicate.
+- Added `audioStoragePath`, shared 700 KB validation for local/Supabase, and centralized Supabase delete support. Newly tracked objects are deleted with cards. Legacy URLs are never reverse-parsed.
+- Edit JSON now covers only `source` and `segments`; the Memo textarea is authoritative, including deletion by saving it empty. Audio previews no longer force MP3 MIME.
+- Added a bounded, session-only Again queue and corrected first-play, one-card loop-all, and gap timer behavior.
+- Vite builds now generate a precache worker from the real hashed `dist` asset list.
+- Added strict TypeScript and core regression tests using Node's built-in test runner (Vitest installation was unavailable from the environment registry; migrate the runner when registry access permits).
+- Remaining work: transactional orphan cleanup when a Supabase upload is abandoned or replaced; authenticated/signed upload architecture for any public/multi-user deployment; component-level browser tests for playback/autoplay and service-worker upgrades.
