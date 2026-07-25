@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { ReactNode } from 'react';
 import { cn } from '../lib/utils';
 import { rateSessionCard, ReviewSessionQueue, shouldPersistSessionRating } from '../lib/reviewSession';
+import { SafeSegmentContent } from './SafeSegmentContent';
 
 type HintStage = 0 | 1 | 2;
 
@@ -20,7 +21,7 @@ function formatRubyText(word: string, ruby: string | undefined, key: number): Re
 }
 
 function generateFullText(segments: Segment[]): ReactNode {
-  return <>{segments.map(([word, ruby], index) => formatRubyText(word, ruby, index))}</>;
+  return <SafeSegmentContent segments={segments} />;
 }
 
 function generateClozeText(segments: Segment[], level: number, isAllClozed = false): ReactNode {

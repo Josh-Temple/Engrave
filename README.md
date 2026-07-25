@@ -53,7 +53,7 @@ Listen mode skips cards without audio, starts playback after moving to the first
 
 `npm run build` generates a service worker from the actual Vite `dist` file list. It precaches hashed JavaScript/CSS plus HTML, manifest, icon, and KaTeX fonts, and uses a network-first navigation response with an offline HTML fallback. An installed update waits until the user selects the small **Update now** notice. Activation retains the previous cache generation, reducing old-tab breakage while the new client takes control.
 
-Raw HTML processing is disabled. Card source is handled by React Markdown (with KaTeX but without `rehypeRaw`), while segment text/readings and notes are React text nodes. Ruby is constructed as trusted React `ruby`/`rt` elements only. Consequently no user-provided HTML elements or attributes are allowed: `script`, `iframe`, `object`, `embed`, `style`, `svg`, event attributes, and `javascript:` URLs cannot become executable markup. Safe Markdown and LaTeX remain available where card source is rendered.
+Raw HTML processing is disabled. Card source and body segments without readings are handled by React Markdown with `remark-math` and `rehype-katex`, but never `rehypeRaw`. A segment with a reading is deliberately treated as plain text and placed in trusted React `ruby`/`rt` elements; Markdown and LaTeX are not interpreted inside either its text or reading. Notes are always React text nodes. Consequently no user-provided HTML elements or attributes are allowed: `script`, `iframe`, `object`, `embed`, `style`, `svg`, event attributes, and `javascript:` URLs cannot become executable markup. Boundary whitespace, newlines, and empty segments are preserved.
 
 ## Product principles
 

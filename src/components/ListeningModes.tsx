@@ -4,6 +4,8 @@ import { MemoryItem, useStore } from '../store/useStore';
 import { View } from '../App';
 import 'katex/dist/katex.min.css';
 import { findNextPlayableIndex, getAudioSource, shouldContinueLoop } from '../lib/listening';
+import { SafeSegmentContent } from './SafeSegmentContent';
+import { isCurrentPlayRequest, shouldResumeManualNavigation, type PlaybackPhase } from '../lib/playbackState';
 
 type ListeningModeType = 'readListen' | 'listen';
 
@@ -11,19 +13,15 @@ const SPEED_OPTIONS = [0.8, 1.0, 1.2, 1.5] as const;
 const GAP_OPTIONS = [0, 1, 2] as const;
 
 function FullText({ item }: { item: MemoryItem }) {
-  return <>{item.segments.map(([word, reading], index) => reading
-    ? <ruby key={index}>{word}<rt>{reading}</rt></ruby>
-    : <span key={index}>{word}</span>)}</>;
+  return <SafeSegmentContent segments={item.segments} />;
 }
-
-type PlaybackStatus = 'idle' | 'playing' | 'paused' | 'waiting-gap' | 'blocked';
 
 export function ListeningModes({ onNavigate, mode }: { onNavigate: (v: View) => void; mode: ListeningModeType }) {
   const items = useStore((s) => s.items);
   const orderedItems = items;
 
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [playbackStatus, setPlaybackStatus] = useState<PlaybackStatus>('idle');
+  const [playbackStatus, setPlaybackStatus] = useState<PlaybackPhase>('idle');
   const [repeatOne, setRepeatOne] = useState(false);
   const [loopAll, setLoopAll] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
@@ -39,6 +37,9 @@ export function ListeningModes({ onNavigate, mode }: { onNavigate: (v: View) => 
     if (gapTimerRef.current !== null) window.clearTimeout(gapTimerRef.current);
     gapTimerRef.current = null;
   };
+  const invalidatePendingPlay = () => {
+    playRequestRef.current += 1;
+  };
 
   useEffect(() => {
     if (currentIndex >= orderedItems.length && orderedItems.length > 0) {
@@ -52,6 +53,8 @@ export function ListeningModes({ onNavigate, mode }: { onNavigate: (v: View) => 
 
   const stopPlayback = () => {
     clearGapTimer();
+    invalidatePendingPlay();
+    playAfterIndexChangeRef.current = false;
     if (!audioRef.current) return;
     audioRef.current.pause();
     audioRef.current.currentTime = 0;
@@ -61,6 +64,8 @@ export function ListeningModes({ onNavigate, mode }: { onNavigate: (v: View) => 
   useEffect(() => {
     return () => {
       clearGapTimer();
+      invalidatePendingPlay();
+      playAfterIndexChangeRef.current = false;
       if (audioRef.current) {
         audioRef.current.pause();
       }
@@ -81,9 +86,9 @@ export function ListeningModes({ onNavigate, mode }: { onNavigate: (v: View) => 
 
     try {
       await audioRef.current.play();
-      if (request === playRequestRef.current) setPlaybackStatus('playing');
+      if (isCurrentPlayRequest(request, playRequestRef.current)) setPlaybackStatus('playing');
     } catch {
-      if (request === playRequestRef.current) {
+      if (isCurrentPlayRequest(request, playRequestRef.current)) {
         playAfterIndexChangeRef.current = false;
         setPlaybackStatus('blocked');
         setPlaybackError('Playback was blocked by the browser. Tap play again after interacting with the page.');
@@ -103,11 +108,16 @@ export function ListeningModes({ onNavigate, mode }: { onNavigate: (v: View) => 
       return;
     }
 
-    const shouldResume = isPlaying || playbackStatus === 'waiting-gap';
+    const shouldResume = shouldResumeManualNavigation(playbackStatus);
     stopPlayback();
+    setPlaybackError(null);
+    if (nextIndex === currentIndex) {
+      if (audioRef.current) audioRef.current.currentTime = 0;
+      if (shouldResume) void startCurrent();
+      return;
+    }
     playAfterIndexChangeRef.current = shouldResume;
     setCurrentIndex(nextIndex);
-    setPlaybackError(null);
   };
 
   useEffect(() => {
@@ -129,7 +139,7 @@ export function ListeningModes({ onNavigate, mode }: { onNavigate: (v: View) => 
 
     if (isPlaying) {
       audioRef.current.pause();
-      ++playRequestRef.current;
+      invalidatePendingPlay();
       setPlaybackStatus('paused');
       return;
     }
@@ -147,6 +157,7 @@ export function ListeningModes({ onNavigate, mode }: { onNavigate: (v: View) => 
   };
 
   const handleEnded = () => {
+    invalidatePendingPlay();
     if (mode === 'readListen') {
       if (repeatOne) {
         if (audioRef.current) {
@@ -182,6 +193,7 @@ export function ListeningModes({ onNavigate, mode }: { onNavigate: (v: View) => 
     };
 
     if (gapSeconds > 0) {
+      invalidatePendingPlay();
       setPlaybackStatus('waiting-gap');
       gapTimerRef.current = window.setTimeout(() => {
         gapTimerRef.current = null;
