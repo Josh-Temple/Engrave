@@ -216,3 +216,10 @@
 - Generated service workers wait for an explicit update action and retain one previous cache generation. The registration displays an Update now notice and reloads after the selected worker takes control.
 - Registry metadata requests for new packages returned HTTP 403, so no new test/lint/sanitize packages were added. The existing strict TypeScript and Node test runner remain.
 - GitHub/Vercel APIs and CLI credentials were unavailable in this environment. The actual hosted build error and production deployment could not be inspected or verified; local `npm ci`, lint, test, and production build pass.
+
+## Regression follow-up (2026-07-25)
+
+- Study, Practice, Read & Listen, and Listen now share `SafeSegmentContent`. Segments without readings support safe Markdown and KaTeX; reading-bearing segments remain plain text in React-created `ruby`/`rt` elements. Raw HTML is never parsed.
+- The generated service worker records the current and retained previous cache names in a metadata cache. Asset fallback is current → explicitly retained previous → network; offline navigation is network → current `/index.html` → previous `/index.html`.
+- Manual Next/Previous explicitly restarts a sole playable audio card when playback was active or waiting on a gap, and otherwise only rewinds it. Stop, pause, navigation, gap entry, and unmount invalidate pending `play()` tokens.
+- `npm test` builds first and verifies the generated `dist/sw.js`, server-rendered safe segment policy, ruby/math/layout behavior, and playback transition helpers with the existing Node runner.

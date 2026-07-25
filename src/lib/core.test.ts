@@ -1,13 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { segmentText } from './segmentText';
-import { escapeHtml, sanitizeSegments } from './textSafety';
+import { sanitizeSegments } from './textSafety';
 import { migratePersistedState, normalizeBackupPayload, normalizeItem, STORAGE_VERSION, useStore, type MemoryItem } from '../store/useStore';
 import { findNextPlayableIndex, shouldContinueLoop } from './listening';
 import { MAX_SESSION_AGAIN_REPEATS, rateSessionCard, shouldPersistSessionRating } from './reviewSession';
 import { enqueueAudioDeletion, readAudioDeletionQueue, retryAudioDeletions } from './audioDeletionQueue';
 import { createStore } from 'zustand/vanilla';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { SafeSegmentContent } from '../components/SafeSegmentContent';
+import { isCurrentPlayRequest, shouldResumeManualNavigation } from './playbackState';
+import { readFile } from 'node:fs/promises';
 
 const item = (id: string, audioUrl?: string): MemoryItem => ({
   id, source: id, segments: [[id]], level: 0, nextReviewDate: 0, interval: 0,
@@ -90,12 +95,46 @@ test('playable navigation handles zero, one and multiple audio cards and loop po
   assert.equal(shouldContinueLoop(0, 0, true), true);
 });
 
-test('dangerous HTML is escaped before the only raw ruby markdown path', () => {
-  const malicious = '<script>alert(1)</script><iframe src="javascript:x"></iframe>';
-  const safe = escapeHtml(malicious);
-  assert.equal(safe.includes('<script'), false);
-  assert.equal(safe.includes('<iframe'), false);
-  assert.match(safe, /&lt;script&gt;/);
+test('shared segment renderer supports math, layout and ruby without creating raw HTML', () => {
+  const rendered = renderToStaticMarkup(createElement(SafeSegmentContent, { segments: [
+    ['$E=mc^2$'], [' and text'], ['\n'], [''], ['日本', 'にほん'], ['中文', 'zhōng wén'],
+    ['<script>alert(1)</script><img onerror="alert(2)">[bad](javascript:alert(3))'],
+  ] }));
+  assert.match(rendered, /class="katex"/);
+  assert.match(rendered, /<span> and text<\/span>/);
+  assert.match(rendered, /<span>\n<\/span><span><\/span>/);
+  assert.match(rendered, /<ruby>日本<rt>にほん<\/rt><\/ruby>/);
+  assert.match(rendered, /<ruby>中文<rt>zhōng wén<\/rt><\/ruby>/);
+  assert.equal(rendered.includes('<script'), false);
+  assert.equal(rendered.includes('<img'), false);
+  assert.equal(rendered.includes('href="javascript:'), false);
+  assert.match(rendered, /&lt;script&gt;/);
+});
+
+test('reading-bearing segments remain plain text rather than Markdown or LaTeX', () => {
+  const rendered = renderToStaticMarkup(createElement(SafeSegmentContent, { segments: [['$x$', '**reading text**']] }));
+  assert.equal(rendered.includes('katex'), false);
+  assert.equal(rendered.includes('<strong>'), false);
+  assert.match(rendered, /<ruby>\$x\$<rt>\*\*reading text\*\*<\/rt><\/ruby>/);
+});
+
+test('manual playback navigation and stale Promise tokens have explicit policy', () => {
+  assert.equal(shouldResumeManualNavigation('playing'), true);
+  assert.equal(shouldResumeManualNavigation('waiting-gap'), true);
+  assert.equal(shouldResumeManualNavigation('paused'), false);
+  assert.equal(isCurrentPlayRequest(1, 2), false);
+  assert.equal(isCurrentPlayRequest(2, 2), true);
+});
+
+test('generated service worker prioritizes current cache and explicitly retained previous cache', async () => {
+  const worker = await readFile('dist/sw.js', 'utf8');
+  assert.match(worker, /caches\.open\(CACHE\)\)\.match\(request\)/);
+  assert.match(worker, /previous \? \(await caches\.open\(previous\)\)\.match\(request\)/);
+  assert.equal(worker.includes('caches.match(event.request)'), false);
+  assert.match(worker, /fetch\(event\.request\).*catch\(\(\) => self\.matchCurrentThenPrevious\('\/index\.html'\)\)/s);
+  assert.match(worker, /SKIP_WAITING/);
+  assert.match(worker, /JSON\.stringify\(\{ current: CACHE, previous \}\)/);
+  assert.match(worker, /!keep\.has\(key\).*caches\.delete\(key\)/);
 });
 
 test('audio deletion queue deduplicates, retries and removes successful paths', async () => {
