@@ -116,7 +116,22 @@ export const prepareAudioForStorage = async (file: File): Promise<PreparedAudio>
 /** Delete only explicitly tracked Supabase objects; local and legacy URLs are left untouched. */
 export const deleteStoredAudio = async (storagePath?: string): Promise<void> => {
   if (!storagePath) return;
-  const { getSupabaseClient } = await import('./supabase');
-  const result = await (await getSupabaseClient()).storage.from(SUPABASE_AUDIO_BUCKET).remove([storagePath]);
-  if (result.error) throw new Error(`Failed to delete audio from Supabase: ${result.error.message}`);
+  try {
+    const { getSupabaseClient } = await import('./supabase');
+    const result = await (await getSupabaseClient()).storage.from(SUPABASE_AUDIO_BUCKET).remove([storagePath]);
+    if (result.error) throw new Error(result.error.message);
+  } catch (error) {
+    console.error('Audio cleanup deferred:', storagePath, error);
+    const { enqueueAudioDeletion } = await import('./audioDeletionQueue');
+    enqueueAudioDeletion(storagePath);
+  }
+};
+
+export const retryStoredAudioDeletions = async (): Promise<void> => {
+  const { retryAudioDeletions } = await import('./audioDeletionQueue');
+  await retryAudioDeletions(async (path) => {
+    const { getSupabaseClient } = await import('./supabase');
+    const result = await (await getSupabaseClient()).storage.from(SUPABASE_AUDIO_BUCKET).remove([path]);
+    if (result.error) throw new Error(result.error.message);
+  });
 };

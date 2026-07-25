@@ -1,16 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { Volume2, ChevronUp, ChevronDown, Copy } from 'lucide-react';
 import { cn } from '../lib/utils';
 import Markdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import rehypeRaw from 'rehype-raw';
 import 'katex/dist/katex.min.css';
 
 interface FlashcardProps {
   header: string;
-  frontText: string;
-  backText: string;
+  frontText: ReactNode;
+  backText: ReactNode;
   onFlip?: () => void;
   onFlipChange?: (isBackVisible: boolean) => void;
   resetKey?: string;
@@ -26,12 +25,12 @@ interface FlashcardProps {
 const markdownClassName =
   'text-xl font-medium leading-relaxed text-left w-full whitespace-pre-wrap [&_rt]:text-gray-400 [&_rt]:font-normal [&_rt]:text-[0.6em] [&>p]:mb-4 last:[&>p]:mb-0';
 
-function CardMarkdown({ text, className }: { text: string; className: string }) {
+function CardMarkdown({ text, className }: { text: ReactNode; className: string }) {
   return (
     <div className={cn(markdownClassName, className)}>
-      <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex, rehypeRaw]}>
-        {text}
-      </Markdown>
+      {typeof text === 'string' ? (
+        <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{text}</Markdown>
+      ) : text}
     </div>
   );
 }

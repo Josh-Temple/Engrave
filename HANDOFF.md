@@ -205,3 +205,14 @@
 - Vite builds now generate a precache worker from the real hashed `dist` asset list.
 - Added strict TypeScript and core regression tests using Node's built-in test runner (Vitest installation was unavailable from the environment registry; migrate the runner when registry access permits).
 - Remaining work: transactional orphan cleanup when a Supabase upload is abandoned or replaced; authenticated/signed upload architecture for any public/multi-user deployment; component-level browser tests for playback/autoplay and service-worker upgrades.
+
+## Stability follow-up (2026-07-25)
+
+- Persist storage remains `zencards-storage-v4`, but its Zustand version is now 2. Version-1 rehydration prefers `audioUrl`, falls back to `audioDataUrl`, drops the legacy field, preserves explicit storage paths/settings/scheduling/order, and isolates malformed cards.
+- Raw HTML parsing was removed. Ruby is rendered with React elements; user source, segments, readings, and notes cannot introduce DOM elements. KaTeX and safe Markdown source rendering remain.
+- Listen playback now uses one index-autoplay request path plus explicit idle/playing/paused/waiting-gap/blocked states. All direct controls cancel pending gaps and stale play promises cannot restore playing state.
+- A card is persistently scheduled only on its first rating in a Study session. Repeated Again/Hard/Good actions affect only the in-memory queue. Practice remains non-persistent.
+- Failed Supabase deletions are retained in `engrave-audio-deletion-queue-v1` with deduplication, attempt count, timestamp, startup retry, and a five-attempt cap.
+- Generated service workers wait for an explicit update action and retain one previous cache generation. The registration displays an Update now notice and reloads after the selected worker takes control.
+- Registry metadata requests for new packages returned HTTP 403, so no new test/lint/sanitize packages were added. The existing strict TypeScript and Node test runner remain.
+- GitHub/Vercel APIs and CLI credentials were unavailable in this environment. The actual hosted build error and production deployment could not be inspected or verified; local `npm ci`, lint, test, and production build pass.

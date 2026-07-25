@@ -2,9 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { segmentText } from './segmentText';
 import { escapeHtml, sanitizeSegments } from './textSafety';
-import { normalizeBackupPayload, normalizeItem, useStore, type MemoryItem } from '../store/useStore';
+import { migratePersistedState, normalizeBackupPayload, normalizeItem, STORAGE_VERSION, useStore, type MemoryItem } from '../store/useStore';
 import { findNextPlayableIndex, shouldContinueLoop } from './listening';
-import { MAX_SESSION_AGAIN_REPEATS, rateSessionCard } from './reviewSession';
+import { MAX_SESSION_AGAIN_REPEATS, rateSessionCard, shouldPersistSessionRating } from './reviewSession';
+import { enqueueAudioDeletion, readAudioDeletionQueue, retryAudioDeletions } from './audioDeletionQueue';
+import { createStore } from 'zustand/vanilla';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 const item = (id: string, audioUrl?: string): MemoryItem => ({
   id, source: id, segments: [[id]], level: 0, nextReviewDate: 0, interval: 0,
@@ -31,14 +34,39 @@ test('old backups import and normalize duplicate audio to the canonical field', 
   assert.equal(backup.app.items[0].audioDataUrl, undefined);
 });
 
+test('Zustand v1 persist envelope rehydrates through persist migration without losing valid data', async () => {
+  const envelope = JSON.parse(JSON.stringify({ version: 1, state: { items: [
+    { ...item('legacy'), note: 'memo', level: 3, interval: 6, easeFactor: 2.1, repetitions: 4, audioDataUrl: 'legacy-data', audioStoragePath: 'cards/a.wav' },
+    { ...item('preferred'), audioUrl: 'canonical', audioDataUrl: 'duplicate' },
+    { broken: true },
+  ], settings: { autoPlayAudioOnBack: true, reviewOrder: 'random' } } }));
+  const storage = {
+    getItem: () => JSON.stringify(envelope), setItem: () => {}, removeItem: () => {},
+  };
+  const store = createStore(persist(() => ({ items: [] as MemoryItem[], settings: { autoPlayAudioOnBack: false, reviewOrder: 'listed' as const } }), {
+    name: 'zencards-storage-v4', version: STORAGE_VERSION, migrate: migratePersistedState,
+    storage: createJSONStorage(() => storage),
+  }));
+  await store.persist.rehydrate();
+  const migrated = store.getState();
+  assert.equal(STORAGE_VERSION, 2);
+  assert.equal(migrated.items.length, 2);
+  assert.deepEqual(migrated.items[0], { ...item('legacy'), note: 'memo', level: 3, interval: 6, easeFactor: 2.1, repetitions: 4, audioUrl: 'legacy-data', audioStoragePath: 'cards/a.wav' });
+  assert.equal(migrated.items[1].audioUrl, 'canonical');
+  assert.equal(migrated.items.some((card) => 'audioDataUrl' in card), false);
+  assert.deepEqual(migrated.settings, envelope.state.settings);
+});
+
 test('Again session queue delays, completes on Good/Hard and is bounded', () => {
-  let queue = { pending: ['a', 'b', 'c', 'd'], againCounts: {} };
+  let queue = { pending: ['a', 'b', 'c', 'd'], againCounts: {}, persistentlyReviewed: [] as string[] };
   queue = rateSessionCard(queue, 'a', 'again');
   assert.deepEqual(queue.pending, ['b', 'c', 'a', 'd']);
-  queue = { pending: ['a'], againCounts: { a: MAX_SESSION_AGAIN_REPEATS - 1 } };
+  queue = { pending: ['a'], againCounts: { a: MAX_SESSION_AGAIN_REPEATS - 1 }, persistentlyReviewed: ['a'] };
   assert.deepEqual(rateSessionCard(queue, 'a', 'again').pending, []);
-  assert.deepEqual(rateSessionCard({ pending: ['a', 'b'], againCounts: {} }, 'a', 'hard').pending, ['b']);
-  assert.deepEqual(rateSessionCard({ pending: ['a', 'b'], againCounts: {} }, 'a', 'good').pending, ['b']);
+  assert.deepEqual(rateSessionCard({ pending: ['a', 'b'], againCounts: {}, persistentlyReviewed: [] }, 'a', 'hard').pending, ['b']);
+  assert.deepEqual(rateSessionCard({ pending: ['a', 'b'], againCounts: {}, persistentlyReviewed: [] }, 'a', 'good').pending, ['b']);
+  assert.equal(shouldPersistSessionRating(queue, 'a'), false);
+  assert.equal(shouldPersistSessionRating(queue, 'b'), true);
 });
 
 test('persistent review ratings apply Again, Hard and Good scheduling policies', () => {
@@ -68,4 +96,18 @@ test('dangerous HTML is escaped before the only raw ruby markdown path', () => {
   assert.equal(safe.includes('<script'), false);
   assert.equal(safe.includes('<iframe'), false);
   assert.match(safe, /&lt;script&gt;/);
+});
+
+test('audio deletion queue deduplicates, retries and removes successful paths', async () => {
+  const values = new Map<string, string>();
+  const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); } };
+  enqueueAudioDeletion('cards/a.mp3', storage, 1);
+  enqueueAudioDeletion('cards/a.mp3', storage, 2);
+  assert.deepEqual(readAudioDeletionQueue(storage), [{ path: 'cards/a.mp3', attempts: 2, lastAttemptAt: 2 }]);
+  let failed = true;
+  await retryAudioDeletions(async () => { if (failed) throw new Error('offline'); }, storage, 3);
+  assert.equal(readAudioDeletionQueue(storage)[0].attempts, 3);
+  failed = false;
+  await retryAudioDeletions(async () => {}, storage, 4);
+  assert.deepEqual(readAudioDeletionQueue(storage), []);
 });

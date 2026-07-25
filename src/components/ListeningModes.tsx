@@ -1,12 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Pause, Play, Repeat1, SkipBack, SkipForward, Repeat, Headphones, BookAudio, TimerReset } from 'lucide-react';
-import Markdown from 'react-markdown';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
-import rehypeRaw from 'rehype-raw';
 import { MemoryItem, useStore } from '../store/useStore';
 import { View } from '../App';
-import { escapeHtml } from '../lib/textSafety';
 import 'katex/dist/katex.min.css';
 import { findNextPlayableIndex, getAudioSource, shouldContinueLoop } from '../lib/listening';
 
@@ -15,22 +10,20 @@ type ListeningModeType = 'readListen' | 'listen';
 const SPEED_OPTIONS = [0.8, 1.0, 1.2, 1.5] as const;
 const GAP_OPTIONS = [0, 1, 2] as const;
 
-function formatRubyText(word: string, ruby?: string): string {
-  const safeWord = escapeHtml(word);
-  if (!ruby) return safeWord;
-  return `<ruby>${safeWord}<rt>${escapeHtml(ruby)}</rt></ruby>`;
+function FullText({ item }: { item: MemoryItem }) {
+  return <>{item.segments.map(([word, reading], index) => reading
+    ? <ruby key={index}>{word}<rt>{reading}</rt></ruby>
+    : <span key={index}>{word}</span>)}</>;
 }
 
-function buildFullText(item: MemoryItem): string {
-  return item.segments.map(([word, ruby]) => formatRubyText(word, ruby)).join('');
-}
+type PlaybackStatus = 'idle' | 'playing' | 'paused' | 'waiting-gap' | 'blocked';
 
 export function ListeningModes({ onNavigate, mode }: { onNavigate: (v: View) => void; mode: ListeningModeType }) {
   const items = useStore((s) => s.items);
   const orderedItems = items;
 
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackStatus, setPlaybackStatus] = useState<PlaybackStatus>('idle');
   const [repeatOne, setRepeatOne] = useState(false);
   const [loopAll, setLoopAll] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
@@ -39,7 +32,9 @@ export function ListeningModes({ onNavigate, mode }: { onNavigate: (v: View) => 
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const gapTimerRef = useRef<number | null>(null);
-  const autoPlayOnIndexChangeRef = useRef(false);
+  const playAfterIndexChangeRef = useRef(false);
+  const playRequestRef = useRef(0);
+  const isPlaying = playbackStatus === 'playing';
   const clearGapTimer = () => {
     if (gapTimerRef.current !== null) window.clearTimeout(gapTimerRef.current);
     gapTimerRef.current = null;
@@ -60,7 +55,7 @@ export function ListeningModes({ onNavigate, mode }: { onNavigate: (v: View) => 
     if (!audioRef.current) return;
     audioRef.current.pause();
     audioRef.current.currentTime = 0;
-    setIsPlaying(false);
+    setPlaybackStatus('paused');
   };
 
   useEffect(() => {
@@ -73,9 +68,11 @@ export function ListeningModes({ onNavigate, mode }: { onNavigate: (v: View) => 
   }, []);
 
   const startCurrent = async () => {
+    clearGapTimer();
+    const request = ++playRequestRef.current;
     if (!audioRef.current || !currentAudioSrc) {
       setPlaybackError('This card has no audio.');
-      setIsPlaying(false);
+      setPlaybackStatus('idle');
       return;
     }
 
@@ -84,10 +81,13 @@ export function ListeningModes({ onNavigate, mode }: { onNavigate: (v: View) => 
 
     try {
       await audioRef.current.play();
-      setIsPlaying(true);
+      if (request === playRequestRef.current) setPlaybackStatus('playing');
     } catch {
-      setIsPlaying(false);
-      setPlaybackError('Playback was blocked by the browser. Tap play again after interacting with the page.');
+      if (request === playRequestRef.current) {
+        playAfterIndexChangeRef.current = false;
+        setPlaybackStatus('blocked');
+        setPlaybackError('Playback was blocked by the browser. Tap play again after interacting with the page.');
+      }
     }
   };
 
@@ -99,15 +99,13 @@ export function ListeningModes({ onNavigate, mode }: { onNavigate: (v: View) => 
 
     if (nextIndex === -1) {
       setPlaybackError('No cards with audio are available.');
-      setIsPlaying(false);
+      setPlaybackStatus('idle');
       return;
     }
 
+    const shouldResume = isPlaying || playbackStatus === 'waiting-gap';
     stopPlayback();
-    if (isPlaying) {
-      clearGapTimer();
-      autoPlayOnIndexChangeRef.current = true;
-    }
+    playAfterIndexChangeRef.current = shouldResume;
     setCurrentIndex(nextIndex);
     setPlaybackError(null);
   };
@@ -118,31 +116,28 @@ export function ListeningModes({ onNavigate, mode }: { onNavigate: (v: View) => 
   }, [playbackSpeed]);
 
   useEffect(() => {
-    if (!isPlaying) return;
-    void startCurrent();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentIndex]);
-
-  useEffect(() => {
-    if (!autoPlayOnIndexChangeRef.current) return;
-    autoPlayOnIndexChangeRef.current = false;
+    if (!playAfterIndexChangeRef.current) return;
+    playAfterIndexChangeRef.current = false;
     void startCurrent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex]);
 
   const handleTogglePlay = async () => {
     if (!audioRef.current) return;
+    clearGapTimer();
+    playAfterIndexChangeRef.current = false;
 
     if (isPlaying) {
       audioRef.current.pause();
-      setIsPlaying(false);
+      ++playRequestRef.current;
+      setPlaybackStatus('paused');
       return;
     }
 
     if (mode === 'listen' && !currentAudioSrc) {
       const firstPlayableIndex = findNextPlayableIndex(orderedItems, currentIndex, 1);
       if (firstPlayableIndex !== -1 && firstPlayableIndex !== currentIndex) {
-        autoPlayOnIndexChangeRef.current = true;
+        playAfterIndexChangeRef.current = true;
         setCurrentIndex(firstPlayableIndex);
         return;
       }
@@ -160,19 +155,19 @@ export function ListeningModes({ onNavigate, mode }: { onNavigate: (v: View) => 
         void startCurrent();
         return;
       }
-      setIsPlaying(false);
+      setPlaybackStatus('idle');
       return;
     }
 
     const scheduleNext = () => {
       const nextPlayable = findNextPlayableIndex(orderedItems, currentIndex, 1);
       if (nextPlayable === -1) {
-        setIsPlaying(false);
+        setPlaybackStatus('idle');
         return;
       }
 
       if (!shouldContinueLoop(currentIndex, nextPlayable, loopAll)) {
-        setIsPlaying(false);
+        setPlaybackStatus('idle');
         return;
       }
 
@@ -182,12 +177,12 @@ export function ListeningModes({ onNavigate, mode }: { onNavigate: (v: View) => 
         return;
       }
 
-      autoPlayOnIndexChangeRef.current = true;
+      playAfterIndexChangeRef.current = true;
       setCurrentIndex(nextPlayable);
     };
 
     if (gapSeconds > 0) {
-      setIsPlaying(false);
+      setPlaybackStatus('waiting-gap');
       gapTimerRef.current = window.setTimeout(() => {
         gapTimerRef.current = null;
         scheduleNext();
@@ -222,9 +217,7 @@ export function ListeningModes({ onNavigate, mode }: { onNavigate: (v: View) => 
               <div className="text-xs text-gray-400 mb-3">{currentIndex + 1} / {orderedItems.length}</div>
               <div className="max-h-[42vh] overflow-y-auto overscroll-contain pr-1">
                 <div className="text-lg leading-relaxed text-gray-900 whitespace-pre-wrap [&_rt]:text-gray-400 [&_rt]:font-normal [&_rt]:text-[0.6em]">
-                  <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex, rehypeRaw]}>
-                    {currentItem ? buildFullText(currentItem) : ''}
-                  </Markdown>
+                  {currentItem ? <FullText item={currentItem} /> : null}
                 </div>
               </div>
             </div>
@@ -322,7 +315,7 @@ export function ListeningModes({ onNavigate, mode }: { onNavigate: (v: View) => 
         src={currentAudioSrc}
         preload="metadata"
         onEnded={handleEnded}
-        onPause={() => setIsPlaying(false)}
+        onPause={() => setPlaybackStatus((status) => status === 'waiting-gap' ? status : 'paused')}
       />
     </div>
   );

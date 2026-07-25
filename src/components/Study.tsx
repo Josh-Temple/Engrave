@@ -4,9 +4,9 @@ import { Flashcard } from './Card';
 import { View } from '../App';
 import { ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { escapeHtml } from '../lib/textSafety';
+import type { ReactNode } from 'react';
 import { cn } from '../lib/utils';
-import { rateSessionCard, ReviewSessionQueue } from '../lib/reviewSession';
+import { rateSessionCard, ReviewSessionQueue, shouldPersistSessionRating } from '../lib/reviewSession';
 
 type HintStage = 0 | 1 | 2;
 
@@ -14,20 +14,19 @@ function isPunctuationOrWhitespace(word: string): boolean {
   return /^[\p{P}\p{S}\s]+$/u.test(word);
 }
 
-function formatRubyText(word: string, ruby?: string): string {
-  const safeWord = escapeHtml(word);
-  if (!ruby) return safeWord;
-  return `<ruby>${safeWord}<rt>${escapeHtml(ruby)}</rt></ruby>`;
+function formatRubyText(word: string, ruby: string | undefined, key: number): ReactNode {
+  if (!ruby) return <span key={key}>{word}</span>;
+  return <ruby key={key}>{word}<rt>{ruby}</rt></ruby>;
 }
 
-function generateFullText(segments: Segment[]): string {
-  return segments.map(([word, ruby]) => formatRubyText(word, ruby)).join('');
+function generateFullText(segments: Segment[]): ReactNode {
+  return <>{segments.map(([word, ruby], index) => formatRubyText(word, ruby, index))}</>;
 }
 
-function generateClozeText(segments: Segment[], level: number, isAllClozed = false): string {
+function generateClozeText(segments: Segment[], level: number, isAllClozed = false): ReactNode {
   const blankRatio = isAllClozed ? 1.0 : (level + 1) * 0.2;
 
-  return segments.map((seg, index) => {
+  return <>{segments.map((seg, index) => {
     const word = seg[0];
     const ruby = seg[1];
     const isPunctuation = isPunctuationOrWhitespace(word);
@@ -47,21 +46,21 @@ function generateClozeText(segments: Segment[], level: number, isAllClozed = fal
     if (isBlank) {
       const blankLength = Math.max(2, word.length);
       const blankStr = '＿'.repeat(blankLength);
-      return ruby ? `<ruby>${blankStr}<rt>&nbsp;</rt></ruby>` : blankStr;
+      return ruby ? <ruby key={index}>{blankStr}<rt>&nbsp;</rt></ruby> : <span key={index}>{blankStr}</span>;
     }
 
-    return formatRubyText(word, ruby);
-  }).join('');
+    return formatRubyText(word, ruby, index);
+  })}</>;
 }
 
-function generateFirstCharacterHint(segments: Segment[]): string {
-  return segments.map(([word]) => {
-    if (isPunctuationOrWhitespace(word)) return escapeHtml(word);
+function generateFirstCharacterHint(segments: Segment[]): ReactNode {
+  return <>{segments.map(([word], index) => {
+    if (isPunctuationOrWhitespace(word)) return <span key={word}>{word}</span>;
 
     const visibleChars = Array.from(word);
     const skeleton = `${visibleChars[0] ?? ''}${'＿'.repeat(Math.max(1, visibleChars.length - 1))}`;
-    return skeleton;
-  }).join('');
+    return <span key={`${index}-${word}`}>{skeleton}</span>;
+  })}</>;
 }
 
 function shouldRevealToken(index: number, word: string): boolean {
@@ -70,19 +69,19 @@ function shouldRevealToken(index: number, word: string): boolean {
   return hash < 3;
 }
 
-function generateLightRevealHint(segments: Segment[]): string {
-  return segments.map((seg, index) => {
+function generateLightRevealHint(segments: Segment[]): ReactNode {
+  return <>{segments.map((seg, index) => {
     const word = seg[0];
     const ruby = seg[1];
 
-    if (isPunctuationOrWhitespace(word)) return escapeHtml(word);
+    if (isPunctuationOrWhitespace(word)) return <span key={index}>{word}</span>;
     if (shouldRevealToken(index, word)) {
-      return formatRubyText(word, ruby);
+      return formatRubyText(word, ruby, index);
     }
 
     const blankStr = '＿'.repeat(Math.max(2, Array.from(word).length));
-    return ruby ? `<ruby>${blankStr}<rt>&nbsp;</rt></ruby>` : blankStr;
-  }).join('');
+    return ruby ? <ruby key={index}>{blankStr}<rt>&nbsp;</rt></ruby> : <span key={index}>{blankStr}</span>;
+  })}</>;
 }
 
 export function Study({ onNavigate, practiceItemId }: { onNavigate: (v: View) => void, practiceItemId?: string }) {
@@ -128,7 +127,7 @@ export function Study({ onNavigate, practiceItemId }: { onNavigate: (v: View) =>
   const [sessionQueue, setSessionQueue] = useState<ReviewSessionQueue | null>(null);
   useEffect(() => {
     if (!isPractice && sessionQueue === null && dueItems.length > 0) {
-      setSessionQueue({ pending: dueItems.map((item) => item.id), againCounts: {} });
+      setSessionQueue({ pending: dueItems.map((item) => item.id), againCounts: {}, persistentlyReviewed: [] });
     }
   }, [dueItems, isPractice, sessionQueue]);
   const currentItem = isPractice ? practiceItem : items.find((item) => item.id === sessionQueue?.pending[0]);
@@ -166,7 +165,9 @@ export function Study({ onNavigate, practiceItemId }: { onNavigate: (v: View) =>
       return;
     }
 
-    reviewItem(currentItem.id, rating);
+    if (sessionQueue && shouldPersistSessionRating(sessionQueue, currentItem.id)) {
+      reviewItem(currentItem.id, rating);
+    }
     setSessionQueue((queue) => queue ? rateSessionCard(queue, currentItem.id, rating) : queue);
   };
 

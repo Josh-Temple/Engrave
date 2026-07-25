@@ -4,7 +4,7 @@ Engrave is a mobile-first, minimal, local-first memorization PWA for passages, f
 
 ## Local development
 
-Requires Node.js.
+Requires Node.js 20–24. Vercel uses `npm install`, `npm run build`, and the `dist` output directory as declared in `vercel.json`.
 
 ```bash
 npm install
@@ -23,7 +23,7 @@ The Vercel configuration builds the Vite app to `dist` and preserves SPA routing
 
 ## Data safety and compatibility
 
-Zustand persistence intentionally continues to use the legacy `zencards-storage-v4` key so existing browser data is not lost. Hydration, backup restore, create, and edit normalize card data. Legacy `audioDataUrl` values migrate to canonical `audioUrl`; new persistence and backup exports omit `audioDataUrl`, preventing duplicate Data URLs. Old Engrave/ZenCards backup JSON remains importable. Backup downloads use the `engrave-backup-*.json` name.
+Zustand persistence intentionally continues to use the legacy `zencards-storage-v4` key so existing browser data is not lost. Persist schema version 2 explicitly migrates version-1 Zustand envelopes during rehydration. Each valid card is normalized independently, so one malformed record does not discard the remaining cards. Hydration, backup restore, create, and edit normalize card data. Legacy `audioDataUrl` values migrate to canonical `audioUrl`; new persistence and backup exports omit `audioDataUrl`, preventing duplicate Data URLs. Old Engrave/ZenCards backup JSON remains importable. Backup downloads use the `engrave-backup-*.json` name.
 
 Before a large update or browser/device change, use **Settings → Download backup**. Browser storage is still finite and clearing site data removes local cards.
 
@@ -45,15 +45,15 @@ Create a public `card-audio` bucket. The browser needs narrowly scoped `insert` 
 
 ## Review and listening behavior
 
-Normal study ratings remain persisted as follows: Again lowers difficulty and schedules tomorrow, Hard keeps the level with a conservative interval, and Good advances it. Separately, Again places the card into an in-memory session queue 2–4 positions later (or at the tail). Good/Hard completes a repeated card; three Again attempts end it for that session. Practice Mode and persistent data do not store this queue.
+Normal study ratings remain persisted as follows: Again lowers difficulty and schedules tomorrow, Hard keeps the level with a conservative interval, and Good advances it. Separately, Again places the card into an in-memory session queue 2–4 positions later (or at the tail). A card’s first rating updates its persistent schedule; ratings on its session-local repeats only decide whether to requeue or complete it and never apply a second persistent penalty/reward. Three Again attempts end it for that session, retaining the first Again’s next-day due date. Practice Mode and persistent data do not store this queue.
 
 Listen mode skips cards without audio, starts playback after moving to the first playable card, supports a one-card Loop All restart, and cancels pending gap timers on pause/navigation. Read & Listen retains repeat-one and speed controls.
 
 ## PWA and rendering security
 
-`npm run build` generates a service worker from the actual Vite `dist` file list. It precaches hashed JavaScript/CSS plus HTML, manifest, and icon, uses a network-first navigation response with an offline HTML fallback, and replaces versioned caches on activation. The existing Engrave manifest, icon, standalone display, and name are retained.
+`npm run build` generates a service worker from the actual Vite `dist` file list. It precaches hashed JavaScript/CSS plus HTML, manifest, icon, and KaTeX fonts, and uses a network-first navigation response with an offline HTML fallback. An installed update waits until the user selects the small **Update now** notice. Activation retains the previous cache generation, reducing old-tab breakage while the new client takes control.
 
-Study ruby markup is produced only from HTML-escaped segment text/readings; user values are never passed directly into the raw-HTML markdown path. React escapes source and memo rendering, while KaTeX and ruby display remain available. Scripts, iframes, event handlers, and dangerous URLs supplied through card/backup values therefore remain text rather than executable markup.
+Raw HTML processing is disabled. Card source is handled by React Markdown (with KaTeX but without `rehypeRaw`), while segment text/readings and notes are React text nodes. Ruby is constructed as trusted React `ruby`/`rt` elements only. Consequently no user-provided HTML elements or attributes are allowed: `script`, `iframe`, `object`, `embed`, `style`, `svg`, event attributes, and `javascript:` URLs cannot become executable markup. Safe Markdown and LaTeX remain available where card source is rendered.
 
 ## Product principles
 
