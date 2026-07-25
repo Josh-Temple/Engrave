@@ -53,7 +53,7 @@ interface AppState {
 }
 
 const STORAGE_KEY = 'zencards-storage-v4';
-const STORAGE_VERSION = 1;
+export const STORAGE_VERSION = 2;
 
 const defaultSettings = (): AppSettings => ({
   autoPlayAudioOnBack: false,
@@ -141,6 +141,18 @@ export const normalizeBackupPayload = (payload: unknown): BackupPayload => {
       items,
       settings: normalizeSettings(appRecord.settings),
     },
+  };
+};
+
+/** Zustand persist migration. Invalid records are isolated instead of aborting hydration. */
+export const migratePersistedState = (persistedState: unknown, version: number): Pick<AppState, 'items' | 'settings'> => {
+  const candidate = persistedState as Record<string, unknown> | undefined;
+  const rawItems = Array.isArray(candidate?.items) ? candidate.items : [];
+  // v1 used the same storage key/version as older releases. Bumping to v2 ensures this
+  // normalization actually runs; normalizeItem prefers audioUrl and drops audioDataUrl.
+  return {
+    items: rawItems.map(normalizeItem).filter((item): item is MemoryItem => item !== null),
+    settings: normalizeSettings(candidate?.settings),
   };
 };
 
@@ -297,14 +309,7 @@ export const useStore = create<AppState>()(
         items: state.items.map(({ audioDataUrl: _legacyAudio, ...item }) => item),
         settings: state.settings,
       }),
-      migrate: (persistedState) => {
-        const candidate = persistedState as Record<string, unknown> | undefined;
-        const rawItems = Array.isArray(candidate?.items) ? candidate.items : [];
-        return {
-          items: rawItems.map((item) => normalizeItem(item)).filter((item): item is MemoryItem => item !== null),
-          settings: normalizeSettings(candidate?.settings),
-        };
-      },
+      migrate: migratePersistedState,
     }
   )
 );
