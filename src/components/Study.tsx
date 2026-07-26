@@ -8,12 +8,10 @@ import type { ReactNode } from 'react';
 import { cn } from '../lib/utils';
 import { rateSessionCard, ReviewSessionQueue, shouldPersistSessionRating } from '../lib/reviewSession';
 import { SafeSegmentContent } from './SafeSegmentContent';
+import { isPunctuationOrWhitespace } from '../lib/cloze';
+import { generateClozeText } from './ClozeSegmentContent';
 
 type HintStage = 0 | 1 | 2;
-
-function isPunctuationOrWhitespace(word: string): boolean {
-  return /^[\p{P}\p{S}\s]+$/u.test(word);
-}
 
 function formatRubyText(word: string, ruby: string | undefined, key: number): ReactNode {
   if (!ruby) return <span key={key}>{word}</span>;
@@ -22,36 +20,6 @@ function formatRubyText(word: string, ruby: string | undefined, key: number): Re
 
 function generateFullText(segments: Segment[]): ReactNode {
   return <SafeSegmentContent segments={segments} />;
-}
-
-function generateClozeText(segments: Segment[], level: number, isAllClozed = false): ReactNode {
-  const blankRatio = isAllClozed ? 1.0 : (level + 1) * 0.2;
-
-  return <>{segments.map((seg, index) => {
-    const word = seg[0];
-    const ruby = seg[1];
-    const isPunctuation = isPunctuationOrWhitespace(word);
-
-    let isBlank = false;
-    if (!isPunctuation) {
-      if (isAllClozed) {
-        isBlank = true;
-      } else {
-        const hash = (index * 2654435761) % 100;
-        if (hash < blankRatio * 100) {
-          isBlank = true;
-        }
-      }
-    }
-
-    if (isBlank) {
-      const blankLength = Math.max(2, word.length);
-      const blankStr = '＿'.repeat(blankLength);
-      return ruby ? <ruby key={index}>{blankStr}<rt>&nbsp;</rt></ruby> : <span key={index}>{blankStr}</span>;
-    }
-
-    return formatRubyText(word, ruby, index);
-  })}</>;
 }
 
 function generateFirstCharacterHint(segments: Segment[]): ReactNode {

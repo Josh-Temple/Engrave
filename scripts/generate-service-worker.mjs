@@ -1,6 +1,16 @@
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 
+const hash = (content) => createHash('sha256').update(content).digest('hex');
+
+export function fingerprintPrecache(entries) {
+  const records = entries
+    .filter(({ path }) => path !== '/sw.js')
+    .map(({ path, content }) => `${path}:${hash(content)}`)
+    .sort();
+  return hash(records.join('\n')).slice(0, 12);
+}
+
 const walk = async (directory, prefix = '') => {
   const files = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
@@ -11,9 +21,11 @@ const walk = async (directory, prefix = '') => {
   return files;
 };
 
-const files = (await walk('dist')).filter((file) => file !== '/sw.js');
-const fingerprint = createHash('sha256').update(await readFile('dist/index.html')).digest('hex').slice(0, 12);
-const source = `const CACHE = 'engrave-${fingerprint}';
+export async function generateServiceWorker(distDirectory = 'dist') {
+  const files = (await walk(distDirectory)).filter((file) => file !== '/sw.js').sort();
+  const entries = await Promise.all(files.map(async (path) => ({ path, content: await readFile(`${distDirectory}${path}`) })));
+  const fingerprint = fingerprintPrecache(entries);
+  const source = `const CACHE = 'engrave-${fingerprint}';
 const CACHE_PREFIX = 'engrave-';
 const META_CACHE = 'engrave-cache-metadata';
 const META_KEY = '/__engrave_cache_generations__';
@@ -44,9 +56,7 @@ self.addEventListener('message', event => { if (event.data === 'SKIP_WAITING') s
 self.addEventListener('activate', event => event.waitUntil((async () => {
   const keys = await caches.keys();
   const metadata = await self.readGenerations();
-  const previous = metadata.current && metadata.current !== CACHE && keys.includes(metadata.current)
-    ? metadata.current
-    : await self.findMigrationPrevious(keys);
+  const previous = metadata.current && metadata.current !== CACHE && keys.includes(metadata.current) ? metadata.current : await self.findMigrationPrevious(keys);
   await (await caches.open(META_CACHE)).put(META_KEY, new Response(JSON.stringify({ current: CACHE, previous })));
   const keep = new Set([CACHE, previous].filter(Boolean));
   await Promise.all(keys.filter(key => self.isGenerationCache(key) && !keep.has(key)).map(key => caches.delete(key)));
@@ -63,4 +73,10 @@ self.addEventListener('fetch', event => {
   event.respondWith(self.matchCurrentThenPrevious(event.request).then(cached => cached || fetch(event.request)));
 });
 `;
-await writeFile('dist/sw.js', source);
+  await writeFile(`${distDirectory}/sw.js`, source);
+  return { fingerprint, files, source };
+}
+
+if (process.argv[1] && import.meta.url === new URL(process.argv[1], 'file:').href) {
+  await generateServiceWorker();
+}
