@@ -37,6 +37,9 @@ export function groupSegmentsForRendering(segments: Segment[]): SegmentRenderGro
 
 function MarkdownText({ text }: { text: string }) {
   if (!text) return <span />;
+  // A whitespace-only run used to be emitted as both its leading and trailing
+  // boundary. Keep it out of Markdown and emit the original characters once.
+  if (text.trim().length === 0) return <>{text}</>;
   const leading = text.match(/^\s*/u)?.[0] ?? '';
   const trailing = text.match(/\s*$/u)?.[0] ?? '';
   const markdown = text.slice(leading.length, text.length - trailing.length);

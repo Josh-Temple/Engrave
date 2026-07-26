@@ -7,10 +7,14 @@
 - Quick Add now includes a lightweight token editor for small pre-save corrections to generated segments, including optional manual readings.
 - Per-card MP3 upload is still available from both creation modes.
 - Cards now support an optional per-card memo (`note`) field that is editable in create/edit flows.
-- Quick Add segments are reconstructed into Markdown runs at display time. Ruby/pinyin and explicit newlines remain boundaries, and Study cloze selection blanks a complete Markdown run rather than individual syntax tokens.
+- Quick Add segments are reconstructed into Markdown runs only for display. Cloze selection retains original plain-text segment boundaries while treating complete math, emphasis, inline-code, and link syntax as atomic; ruby/pinyin remains one unit and whitespace, punctuation, and newlines are not selectable.
 - Service-worker generations are fingerprinted from the sorted path and content hash of every precached file except `sw.js`; current-cache lookup still precedes the retained previous generation.
 
 ## Latest Session Changes
+
+- Restored progressive cloze after the PR #43 rendering changes by separating display reconstruction from cloze-unit construction. Levels 0–3 use deterministic 20% steps, while level 4 and Practice Mode blank all selectable units.
+- Fixed whitespace-only Markdown groups being emitted twice, preserving spaces, ideographic spaces, and tabs exactly once.
+- Added real-level regression coverage for word/character segmentation, atomic math/Markdown, ruby, whitespace, blank lines, deterministic progression, and Practice Mode.
 
 - Listening mode memo visibility update:
   - In both **Read & Listen** and **Listen** views, the current card memo (`note`) is now rendered in a dedicated panel directly beneath playback control buttons when present.
