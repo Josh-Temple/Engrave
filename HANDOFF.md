@@ -7,6 +7,8 @@
 - Quick Add now includes a lightweight token editor for small pre-save corrections to generated segments, including optional manual readings.
 - Per-card MP3 upload is still available from both creation modes.
 - Cards now support an optional per-card memo (`note`) field that is editable in create/edit flows.
+- Quick Add segments are reconstructed into Markdown runs at display time. Ruby/pinyin and explicit newlines remain boundaries, and Study cloze selection blanks a complete Markdown run rather than individual syntax tokens.
+- Service-worker generations are fingerprinted from the sorted path and content hash of every precached file except `sw.js`; current-cache lookup still precedes the retained previous generation.
 
 ## Latest Session Changes
 

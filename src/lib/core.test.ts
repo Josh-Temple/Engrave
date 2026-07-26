@@ -13,6 +13,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { SafeSegmentContent } from '../components/SafeSegmentContent';
 import { isCurrentPlayRequest, shouldResumeManualNavigation } from './playbackState';
 import { readFile } from 'node:fs/promises';
+import { generateClozeText } from '../components/ClozeSegmentContent';
+import { createClozeRenderGroups } from './cloze';
+import { fingerprintPrecache } from '../../scripts/generate-service-worker.mjs';
 
 const item = (id: string, audioUrl?: string): MemoryItem => ({
   id, source: id, segments: [[id]], level: 0, nextReviewDate: 0, interval: 0,
@@ -101,14 +104,76 @@ test('shared segment renderer supports math, layout and ruby without creating ra
     ['<script>alert(1)</script><img onerror="alert(2)">[bad](javascript:alert(3))'],
   ] }));
   assert.match(rendered, /class="katex"/);
-  assert.match(rendered, /<span> and text<\/span>/);
-  assert.match(rendered, /<span>\n<\/span><span><\/span>/);
+  assert.match(rendered, /class="katex"[\s\S]* and text<\/span>/);
+  assert.match(rendered, /<br\/><span><span><\/span><\/span>/);
   assert.match(rendered, /<ruby>日本<rt>にほん<\/rt><\/ruby>/);
   assert.match(rendered, /<ruby>中文<rt>zhōng wén<\/rt><\/ruby>/);
   assert.equal(rendered.includes('<script'), false);
   assert.equal(rendered.includes('<img'), false);
   assert.equal(rendered.includes('href="javascript:'), false);
   assert.match(rendered, /&lt;script&gt;/);
+});
+
+test('Quick Add word, character and smart paths reconstruct math and Markdown', () => {
+  for (const [mode, language] of [
+    ['word', 'en'], ['character', 'ja'], ['smart', 'en'], ['smart', 'ja'],
+  ] as const) {
+    const rendered = renderToStaticMarkup(createElement(SafeSegmentContent, {
+      segments: segmentText('$E=mc^2$', mode, language),
+    }));
+    assert.match(rendered, /class="katex"/, `${mode}/${language} should render KaTeX`);
+  }
+
+  for (const source of ['**bold**', '`code`', '[link](https://example.com)']) {
+    const rendered = renderToStaticMarkup(createElement(SafeSegmentContent, {
+      segments: segmentText(source, 'word', 'en'),
+    }));
+    if (source.startsWith('**')) assert.match(rendered, /<strong>bold<\/strong>/);
+    if (source.startsWith('`')) assert.match(rendered, /<code>code<\/code>/);
+    if (source.startsWith('[')) assert.match(rendered, /<a href="https:\/\/example.com">link<\/a>/);
+  }
+});
+
+test('reconstructed rendering preserves ruby boundaries, blank lines and safe text', () => {
+  const mixed = renderToStaticMarkup(createElement(SafeSegmentContent, {
+    segments: [['日本', 'にほん'], [' '], ...segmentText('$E=mc^2$', 'character', 'ja')],
+  }));
+  assert.match(mixed, /<ruby>日本<rt>にほん<\/rt><\/ruby><span> <span class="katex"/);
+
+  const multiline = renderToStaticMarkup(createElement(SafeSegmentContent, {
+    segments: segmentText('First line\n\n$E=mc^2$', 'word', 'en'),
+  }));
+  assert.match(multiline, /First line<\/span><br\/><br\/><span><span class="katex"/);
+
+  const attacks = [
+    '<script>alert(1)</script>', '<img src=x onerror="alert(1)">',
+    '[bad](javascript:alert(1))', '<svg onload="alert(1)"></svg>',
+  ].join('\n');
+  const unsafe = renderToStaticMarkup(createElement(SafeSegmentContent, {
+    segments: segmentText(attacks, 'word', 'en'),
+  }));
+  assert.equal(/<(script|img|svg)\b/i.test(unsafe), false);
+  assert.equal(/href="javascript:|<[^>]+\s(?:onerror|onload)=/i.test(unsafe), false);
+});
+
+test('Study cloze rendering keeps Markdown runs atomic and ruby behavior intact', () => {
+  const mathSegments = segmentText('$E=mc^2$', 'word', 'en');
+  const visible = renderToStaticMarkup(generateClozeText(mathSegments, -1));
+  assert.match(visible, /class="katex"/);
+
+  const practiceGroups = createClozeRenderGroups(mathSegments, 0, true);
+  assert.equal(practiceGroups.length, 1);
+  assert.equal(practiceGroups[0].type, 'markdown');
+  assert.equal(practiceGroups[0].blank, true);
+  const blank = renderToStaticMarkup(generateClozeText(mathSegments, 0, true));
+  assert.equal(blank.includes('katex'), false);
+  assert.equal(blank.includes('$'), false);
+
+  const rubyVisible = renderToStaticMarkup(generateClozeText([['日本', 'にほん']], -1));
+  assert.match(rubyVisible, /<ruby>日本<rt>にほん<\/rt><\/ruby>/);
+  const rubyBlank = renderToStaticMarkup(generateClozeText([['日本', 'にほん']], 0, true));
+  assert.match(rubyBlank, /<ruby>＿＿<rt> <\/rt><\/ruby>/);
+  assert.equal(createClozeRenderGroups([[' '], [',']], 0, true).some((group) => group.blank), false);
 });
 
 test('reading-bearing segments remain plain text rather than Markdown or LaTeX', () => {
@@ -135,6 +200,23 @@ test('generated service worker prioritizes current cache and explicitly retained
   assert.match(worker, /SKIP_WAITING/);
   assert.match(worker, /JSON\.stringify\(\{ current: CACHE, previous \}\)/);
   assert.match(worker, /!keep\.has\(key\).*caches\.delete\(key\)/);
+});
+
+test('service worker fingerprint covers every precache file content deterministically', () => {
+  const base = [
+    { path: '/index.html', content: '<main />' },
+    { path: '/manifest.webmanifest', content: '{}' },
+    { path: '/icon.svg', content: '<svg />' },
+    { path: '/assets/app.js', content: 'app' },
+    { path: '/sw.js', content: 'old worker' },
+  ];
+  const initial = fingerprintPrecache(base);
+  assert.equal(initial, fingerprintPrecache([...base].reverse()));
+  assert.equal(initial, fingerprintPrecache(base.map((entry) => entry.path === '/sw.js' ? { ...entry, content: 'new worker' } : entry)));
+  for (const path of ['/index.html', '/manifest.webmanifest', '/icon.svg', '/assets/app.js']) {
+    const changed = base.map((entry) => entry.path === path ? { ...entry, content: `${entry.content}!` } : entry);
+    assert.notEqual(initial, fingerprintPrecache(changed), `${path} must affect fingerprint`);
+  }
 });
 
 test('audio deletion queue deduplicates, retries and removes successful paths', async () => {
