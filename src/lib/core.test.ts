@@ -156,24 +156,80 @@ test('reconstructed rendering preserves ruby boundaries, blank lines and safe te
   assert.equal(/href="javascript:|<[^>]+\s(?:onerror|onload)=/i.test(unsafe), false);
 });
 
-test('Study cloze rendering keeps Markdown runs atomic and ruby behavior intact', () => {
-  const mathSegments = segmentText('$E=mc^2$', 'word', 'en');
-  const visible = renderToStaticMarkup(generateClozeText(mathSegments, -1));
-  assert.match(visible, /class="katex"/);
+test('Study cloze is progressive per source token and deterministic at real levels', () => {
+  const segments = segmentText('The quick brown fox jumps over the lazy dog and runs away.', 'word', 'en');
+  const levels = [0, 1, 2, 3, 4].map((level) => createClozeRenderGroups(segments, level));
+  const selectable = (groups: ReturnType<typeof createClozeRenderGroups>) => groups.filter((group) =>
+    group.type !== 'line-break' && !/^\s$|^[.,]$/u.test(group.text));
+  const blankCount = (groups: ReturnType<typeof createClozeRenderGroups>) => selectable(groups).filter((group) => group.blank).length;
+  assert.ok(blankCount(levels[0]) > 0);
+  assert.ok(blankCount(levels[0]) < selectable(levels[0]).length);
+  for (let level = 1; level < levels.length; level += 1) {
+    assert.ok(blankCount(levels[level]) >= blankCount(levels[level - 1]));
+  }
+  assert.equal(blankCount(levels[4]), selectable(levels[4]).length);
+  assert.deepEqual(createClozeRenderGroups(segments, 2), levels[2]);
+  assert.equal(levels.flat().some((group) => group.type !== 'line-break' && /^[\s.,]+$/u.test(group.text) && group.blank), false);
+});
 
-  const practiceGroups = createClozeRenderGroups(mathSegments, 0, true);
+test('Study cloze keeps math and Markdown constructs atomic without combining prose', () => {
+  const mathSegments = segmentText('Remember $E=mc^2$ today and explain the equation clearly.', 'word', 'en');
+  const mathUnits = createClozeRenderGroups(mathSegments, 0);
+  const math = mathUnits.find((group) => group.type === 'markdown' && group.text === '$E=mc^2$');
+  assert.ok(math);
+  assert.ok(mathUnits.filter((group) => group.type === 'markdown' && /[A-Za-z]+/u.test(group.text)).length > 2);
+  const visibleLevel = [0, 1, 2, 3].find((level) => !createClozeRenderGroups(mathSegments, level)
+    .find((group) => group.type === 'markdown' && group.text === '$E=mc^2$')?.blank);
+  assert.notEqual(visibleLevel, undefined);
+  assert.match(renderToStaticMarkup(generateClozeText(mathSegments, visibleLevel!)), /class="katex"/);
+
+  const displayMath: Parameters<typeof generateClozeText>[0] = [['$$'], ['\n'], ['E=mc^2'], ['\n'], ['$$']];
+  const displayUnits = createClozeRenderGroups(displayMath, 0, true);
+  assert.equal(displayUnits.length, 1);
+  assert.equal(displayUnits[0].type, 'markdown');
+  assert.equal(displayUnits[0].text, '$$\nE=mc^2\n$$');
+  assert.equal(renderToStaticMarkup(generateClozeText(displayMath, 0, true)).match(/\n/gu)?.length, 2);
+
+  const markdownSegments = segmentText('Read **this section** and use `npm test` today.', 'word', 'en');
+  const markdownUnits = createClozeRenderGroups(markdownSegments, 0, true);
+  assert.ok(markdownUnits.some((group) => group.type === 'markdown' && group.text === '**this section**' && group.blank));
+  assert.ok(markdownUnits.some((group) => group.type === 'markdown' && group.text === '`npm test`' && group.blank));
+  const visible = renderToStaticMarkup(createElement(SafeSegmentContent, { segments: markdownSegments }));
+  assert.match(visible, /<strong>this section<\/strong>/);
+  assert.match(visible, /<code>npm test<\/code>/);
+
+  const practiceGroups = createClozeRenderGroups(segmentText('$E=mc^2$', 'word', 'en'), 0, true);
   assert.equal(practiceGroups.length, 1);
   assert.equal(practiceGroups[0].type, 'markdown');
   assert.equal(practiceGroups[0].blank, true);
-  const blank = renderToStaticMarkup(generateClozeText(mathSegments, 0, true));
+  const blank = renderToStaticMarkup(generateClozeText(segmentText('$E=mc^2$', 'word', 'en'), 0, true));
   assert.equal(blank.includes('katex'), false);
   assert.equal(blank.includes('$'), false);
 
-  const rubyVisible = renderToStaticMarkup(generateClozeText([['日本', 'にほん']], -1));
-  assert.match(rubyVisible, /<ruby>日本<rt>にほん<\/rt><\/ruby>/);
   const rubyBlank = renderToStaticMarkup(generateClozeText([['日本', 'にほん']], 0, true));
   assert.match(rubyBlank, /<ruby>＿＿<rt> <\/rt><\/ruby>/);
   assert.equal(createClozeRenderGroups([[' '], [',']], 0, true).some((group) => group.blank), false);
+});
+
+test('character, ruby, whitespace and blank-line cloze units retain layout', () => {
+  const characters = segmentText('今日は良い天気です。', 'character', 'ja');
+  const counts = [0, 1, 2, 3, 4].map((level) => createClozeRenderGroups(characters, level).filter((unit) => unit.blank).length);
+  assert.ok(counts[0] > 0 && counts[0] < characters.length - 1);
+  counts.slice(1).forEach((count, index) => assert.ok(count >= counts[index]));
+  assert.equal(createClozeRenderGroups(characters, 4).at(-1)?.blank, undefined);
+
+  const mixed: Parameters<typeof generateClozeText>[0] = [['日', 'に'], ['本', 'ほん'], [' '], ['language'], [' '], ['$x^2$']];
+  const units = createClozeRenderGroups(mixed, 0);
+  assert.equal(units.filter((unit) => unit.type === 'ruby').length, 2);
+  assert.ok(units.some((unit) => unit.type === 'markdown' && unit.text === '$x^2$'));
+  assert.ok(units.length > 3);
+
+  for (const whitespace of [' ', '   ', '　', '\t']) {
+    const markup = renderToStaticMarkup(createElement(SafeSegmentContent, { segments: [['a', 'A'], [whitespace], ['b', 'B']] }));
+    assert.equal(markup, `<ruby>a<rt>A</rt></ruby><span>${whitespace}</span><ruby>b<rt>B</rt></ruby>`);
+  }
+  const lines = segmentText('First line\n\nSecond line', 'word', 'en');
+  assert.equal(renderToStaticMarkup(generateClozeText(lines, 0, true)).match(/<br\/>/gu)?.length, 2);
 });
 
 test('reading-bearing segments remain plain text rather than Markdown or LaTeX', () => {
