@@ -3,6 +3,7 @@
 Engrave is a mobile-first, minimal, local-first memorization PWA for passages, formulas, and language study. Card content, settings, review history, and local audio remain in the browser; there are no accounts, server database, cloud sync, or AI integration.
 
 ## Local development
+- Production: https://engrave-theta.vercel.app/
 
 Requires Node.js 20–24. Vercel uses `npm install`, `npm run build`, and the `dist` output directory as declared in `vercel.json`.
 
